@@ -1,0 +1,33 @@
+:root {
+  --bg: #08060b;
+  --panel: #0f0d13;
+  --panel2: #f4f2ff;
+  --text: #e9e6f6;
+  --muted: #9b98a9;
+  --lavender: #cfc3ff;
+  --border: rgba(207, 195, 255, 0.18);
+  --shadow: 0 10px 30px rgba(79, 64, 110, 0.48);
+  --card-glow: rgba(195, 174, 255, 0.16);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+  background: radial-gradient(
+      ellipse at 20% 10%,
+      rgba(140, 116, 200, 0.08),
+      transparent 10%
+    ),
+    var(--bg);
+  color: var(--text);
+}
+
+img {
+  max-width: 100%;
+}

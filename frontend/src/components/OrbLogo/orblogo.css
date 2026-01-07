@@ -1,0 +1,18 @@
+.orb-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 36px;
+}
+.orb {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 20%,
+    #e9e6f6,
+    #bfaaff 35%,
+    #7c6adf 80%
+  );
+  box-shadow: 0 0 80px 26px rgba(204, 190, 255, 0.12),
+    inset 0 -18px 40px rgba(0, 0, 0, 0.12);
+}
