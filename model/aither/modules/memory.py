@@ -19,15 +19,15 @@ class AitherMemory():
     def getCurrentTokens(self):
         text = ""
         for message in self.messages:
-            role = self.messages["role"]
-            content = self.messages["content"]
+            role = message["role"]
+            content = message["content"]
             text += role + ": " + content + "\n"
         self.current_tokens = self.tokenizer.encode(text)
         return len(self.current_tokens["input_ids"][0]) 
     
     #Checks if the tokens have hit the threshold and need to compact which summarizes the previous messages
     def compact(self):
-        if self.getCurrentTokens < self.max_history_tokens:
+        if self.getCurrentTokens() < self.max_history_tokens:
             return
         
         recent_messages = 6
@@ -36,7 +36,7 @@ class AitherMemory():
 
         conversation_text = ""
         for message in summary_messages:
-            conversation_text += self.messages["role"] + ": " + self.messages["content"] + "\n"
+            conversation_text += message["role"] + ": " + message["content"] + "\n"
     
         summary_prompt = summary_prompt = f"""You are Aither, an AI Therapist specializing in Mental Health and Psychology.
 
