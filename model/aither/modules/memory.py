@@ -54,8 +54,18 @@ class AitherMemory():
         Summary:"""
 
         #call the model for compaction
-        
+        inputText = self.tokenizer.tokenizer(summary_prompt, return_tensors="pt")
+        output = self.model.generate(inputText["input_ids"])
+        response = self.tokenizer.tokenizer.decode(output[0])
+
+        self.messages = [{"role": "system", "content": response}] + current_messages
+            
 
     #Returns toString of the Message History
     def toString(self):
-        pass
+        result = ""
+        for message in self.messages:
+            role = message["role"]
+            context = message["content"]
+            result += role + ": " + context + "\n"
+        return result
