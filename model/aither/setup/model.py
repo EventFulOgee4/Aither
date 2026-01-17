@@ -16,6 +16,13 @@ class AitherModel():
             )
             self.model = get_peft_model(self.model, self.loraConfig)
 
+    def generate(self, input_ids, max_new_tokens=100):
+        return self.model.generate(
+            input_ids,
+            max_new_tokens=max_new_tokens,
+            pad_token_id=self.model.config.eos_token_id
+        )
+
 
 
 
