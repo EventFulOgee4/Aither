@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import ChatMessageViewSet
+from .views import TherapySessionViewSet, ChatMessageViewSet
 
 urlpatterns = [
-    path('messages/', ChatMessageViewSet.as_view({'get': 'list', 'post': 'create'}), name='chat-messages'),
-]   
+    path('sessions/', TherapySessionViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path('messages/', ChatMessageViewSet.as_view({'get': 'list', 'post': 'create'})),
+]
