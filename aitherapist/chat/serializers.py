@@ -1,7 +1,14 @@
 from rest_framework import serializers
-from .models import ChatMessage
+from .models import TherapySession, ChatMessage
 
-class MessageSerializer(serializers.ModelSerializer):
+class TherapySessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TherapySession
+        fields = '__all__'
+
+class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
         fields = '__all__'
+
+
