@@ -1,9 +1,15 @@
-#Emotional Tones of Aither : Assertive, Tender, Empathethic, and Neutral
+#Emotional Tones of Aither : Assertive, Tender, Empathetic, and Neutral
 
 class AitherEmotionalTones():   
     EMOTIONAL_TONES = {
-        "ASSERTIVE" : "",
-        "TENDER" : "",
-        "EMPATHETHIC" : "",
-        "NEUTRAL/DEFAULT" : ""
+        "ASSERTIVE" : "Respond in a direct, confident tone. Provide clear guidance and actionable steps. Be constructively challenging when appropriate. Focus on solutions and encourage the user to take action.",
+        "TENDER" : "Respond in a caring, sympathetic tone. Provide clear guidance, care, and heartfelt support to the user and actionable steps. Be emotionally supportive at all times. Focus on up-lifting the mood and encouraging the user in the current context.",
+        "EMPATHETIC" : "Respond in an emotional tone that is directly relatable to the user. Provide clear guidance and actionable steps. Be supportive and provide wisdom. Focus on solutions and encourage the user to take action.",
+        "NEUTRAL/DEFAULT" : "Respond in a simple, indirect, and all-ears tone to the user. Be helpful, listen to the user's concerns and address them to fulfill the user's request. Focus on longterm solutions, goals, and general feedback. "
     }
+
+    def getTone(self, tone):
+        if tone not in self.EMOTIONAL_TONES:
+            return self.EMOTIONAL_TONES.get("NEUTRAL/DEFAULT") # if an invalid tone is called for, then it will return the default one
+        else:
+            return self.EMOTIONAL_TONES.get(tone)
