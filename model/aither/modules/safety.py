@@ -23,4 +23,27 @@ class SafetyAssessment:
 class AitherSafety():
     def __init__(self, memory):
         self.memory = memory
+        self.crisis_patterns = {
+            "explicitness" : {
+                "patterns" : ["end it all", "better off", "going to do it", "not needed", "unalive"], 
+                "severity" : RiskAssessment.CRITICAL
+            },
+            "hopelessness" : {
+                "patterns" : ["no one likes me", "I'm hated"],
+                "severity" : RiskAssessment.URGENT
+            },
+            "unwell" : {
+                "patterns" : [],
+                "severity" : RiskAssessment.CONCERNED
+            },
+            "distress" : {
+                "patterns" : [],
+                "severity" : RiskAssessment.WATCHFUL
+            },
+            "healthy" : {
+                "patterns" : [],
+                "severity" : RiskAssessment.BASELINE
+            }
+        }
+        
 
