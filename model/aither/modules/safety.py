@@ -1,8 +1,9 @@
 #This module is ESSENTIAL for Aither, it detects crisis detection within user messages, and patterns across pattern history
 from aither.modules.memory import AitherMemory as mem
 from enum import Enum
+from dataclasses import dataclass
 
-class RiskAssesment(Enum):
+class RiskAssessment(Enum):
     BASELINE = 0
     WATCHFUL = 1
     CONCERNED = 2
@@ -10,6 +11,13 @@ class RiskAssesment(Enum):
     CRITICAL = 4
 
     
+@dataclass
+class SafetyAssessment:
+    riskLevel : RiskAssessment
+    recommendedAction : str  
+    triggers : list[str]
+    confidence : float
+    toneChange : str 
 
 
 class AitherSafety():
