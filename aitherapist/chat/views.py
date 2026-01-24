@@ -2,6 +2,8 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 from .models import TherapySession, ChatMessage
 from .serializers import TherapySessionSerializer, ChatMessageSerializer
 
@@ -12,3 +14,7 @@ class TherapySessionViewSet(viewsets.ModelViewSet):
 class ChatMessageViewSet(viewsets.ModelViewSet):
     queryset = ChatMessage.objects.all()
     serializer_class = ChatMessageSerializer
+
+@api_view(['GET'])
+def test_api(request):
+    return Response({"status": "ok", "message": "API is working"})
