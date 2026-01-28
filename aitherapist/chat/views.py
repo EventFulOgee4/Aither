@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from .models import TherapySession, ChatMessage, MoodEntry
 from .serializers import TherapySessionSerializer, ChatMessageSerializer, MoodEntrySerializer
 
+
 class TherapySessionViewSet(viewsets.ModelViewSet):
     serializer_class = TherapySessionSerializer
     permission_classes = [permissions.IsAuthenticated]
