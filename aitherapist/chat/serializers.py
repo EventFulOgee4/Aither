@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import TherapySession, ChatMessage
+from .models import TherapySession, ChatMessage, MoodEntry
 
 class TherapySessionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,4 +12,8 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         fields = ['id', 'session', 'sender', 'message', 'timestamp']
         read_only_fields = ['sender', 'timestamp']
 
-
+class MoodEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MoodEntry
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at']

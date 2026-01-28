@@ -4,8 +4,8 @@ from django.shortcuts import render
 from rest_framework import viewsets, generics, permissions
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import TherapySession, ChatMessage
-from .serializers import TherapySessionSerializer, ChatMessageSerializer
+from .models import TherapySession, ChatMessage, MoodEntry
+from .serializers import TherapySessionSerializer, ChatMessageSerializer, MoodEntrySerializer
 
 class TherapySessionViewSet(viewsets.ModelViewSet):
     serializer_class = TherapySessionSerializer
@@ -52,3 +52,13 @@ def test_api(request):
 #AI
 def get_ai_response(user_message):
     return "Thank you for sharing that. Can you tell me more?"
+
+class MoodEntryViewSet(viewsets.ModelViewSet):
+    serializer_class = MoodEntrySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return MoodEntry.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
