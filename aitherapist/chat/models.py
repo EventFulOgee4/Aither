@@ -1,5 +1,6 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User #To get JWT, install pip install 
+#djangorestframework djangorestframework-simplejwt
 
 class TherapySession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
