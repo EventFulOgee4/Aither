@@ -36,3 +36,31 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.user.username
+
+
+class MoodEntry(models.Model):
+    MOOD_CHOICES = [
+        ('happy', 'Happy'),
+        ('sad', 'Sad'),
+        ('anxious', 'Anxious'),
+        ('stressed', 'Stressed'),
+        ('neutral', 'Neutral'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    session = models.ForeignKey(
+        TherapySession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='moods'
+    )
+    mood = models.CharField(max_length=20, choices=MOOD_CHOICES)
+    intensity = models.IntegerField(help_text="Scale from 1–10")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.mood} ({self.intensity})"
