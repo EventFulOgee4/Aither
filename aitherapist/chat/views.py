@@ -8,7 +8,11 @@ from .models import TherapySession, ChatMessage, MoodEntry
 from .serializers import TherapySessionSerializer, ChatMessageSerializer, MoodEntrySerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import PermissionDenied
-
+from rest_framework.decorators import permission_classes
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Avg, Min, Max
+from django.db.models.functions import Length
+#from django.utils import timezone
 
 
 # Simple AI response stub (replace with real AI later)
@@ -87,3 +91,52 @@ class MoodEntryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+#Metadata view for a therapy session
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def session_metadata(request, session_id):
+    """
+    Returns detailed metadata for a single therapy session.
+    Includes messages, AI responses, moods, and session stats.
+    """
+    try:
+        # 1️⃣ Get the session owned by the current user
+        session = TherapySession.objects.get(id=session_id, user=request.user)
+    except TherapySession.DoesNotExist:
+        return Response({"detail": "Session not found or not yours"}, status=404)
+
+    # 2️⃣ Gather messages & moods
+    messages = session.messages.all()  # related_name="messages"
+    moods = session.moods.all()        # related_name="moods"
+
+    # 3️⃣ Compute message stats
+    user_message_count = messages.filter(sender='user').count()
+    ai_message_count = messages.filter(sender='ai').count()
+    last_activity = messages.last().timestamp if messages.exists() else None
+    average_message_length = messages.aggregate(avg_len=Avg(Length('message')))['avg_len'] if messages.exists() else None
+
+    # 4️⃣ Compute mood stats
+    average_mood = moods.aggregate(avg=Avg('intensity'))['avg'] if moods.exists() else None
+    min_mood_intensity = moods.aggregate(min=Min('intensity'))['min'] if moods.exists() else None
+    max_mood_intensity = moods.aggregate(max=Max('intensity'))['max'] if moods.exists() else None
+    mood_count = moods.count()
+
+    # 5️⃣ Session-level stats
+    session_duration_seconds = (messages.last().timestamp - session.created_at).total_seconds() if messages.exists() else 0
+
+    # 6️⃣ Return metadata
+    return Response({
+        "session_id": session.id,
+        "title": session.title,
+        "created_at": session.created_at,
+        "user_messages": user_message_count,
+        "ai_messages": ai_message_count,
+        "last_activity": last_activity,
+        "average_message_length": average_message_length,
+        "mood_count": mood_count,
+        "average_mood": average_mood,
+        "min_mood_intensity": min_mood_intensity,
+        "max_mood_intensity": max_mood_intensity,
+        "session_duration_seconds": session_duration_seconds
+    })
