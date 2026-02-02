@@ -47,6 +47,9 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         session = serializer.validated_data['session']
+        session.last_activity = user_message.timestamp
+        session.message_count += 2  # user + AI
+        session.save()
 
         # Ownership check
         if session.user != self.request.user:
@@ -74,6 +77,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def test_api(request):
     return Response({"status": "ok", "message": "API is working"})
 
