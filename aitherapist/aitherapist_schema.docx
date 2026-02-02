@@ -1,0 +1,30 @@
+User {
+  id PK
+  username
+  email
+  password
+}
+
+TherapySession {
+  id PK
+  user_id FK
+  title
+  created_at
+}
+
+ChatMessage {
+  id PK
+  session_id FK
+  sender
+  message
+  timestamp
+}
+
+MoodEntry {
+  id PK
+  user_id FK
+  session_id FK
+  mood
+  intensity
+  created_at
+}
