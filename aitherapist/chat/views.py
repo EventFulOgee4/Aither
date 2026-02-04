@@ -12,7 +12,7 @@ from rest_framework.decorators import permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Avg, Min, Max
 from django.db.models.functions import Length
-#from django.utils import timezone
+from django.utils import timezone
 
 
 # Simple AI response stub (replace with real AI later)
@@ -58,6 +58,10 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         # Save user message
         self.user_message = serializer.save(sender="user")
 
+        # Update session activity
+        session.last_activity = timezone.now()
+        session.save(update_fields=["last_activity"])
+
         # Generate AI message
         self.ai_message = ChatMessage.objects.create(
             session=session,
@@ -95,7 +99,10 @@ class MoodEntryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
-
+        if mood.session:
+            mood.session.last_activity = timezone.now()
+            mood.session.save(update_fields=["last_activity"])
+            
 #Metadata view for a therapy session
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
