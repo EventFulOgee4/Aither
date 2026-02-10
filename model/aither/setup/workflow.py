@@ -83,3 +83,24 @@ class AitherWorkflow():
 
                 if i % 100 == 0:
                     print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item() * config.gradientAccSteps}")
+
+    def save(self):
+        self.aither.save_pretrained(self.savePath)
+        self.tokenizer.tokenizer.save_pretrained(self.savePath)
+        print(f"Model saved to {self.savePath}")
+
+    def run(self):
+        print("Preparing data...")
+        self.prepareData()
+        print("Setting up model...")
+        self.setupModel()
+        print("Training...")
+        self.train()
+        print("Saving...")
+        self.save()
+        print("Done.")
+
+
+if __name__ == "__main__":
+    pipeline = AitherWorkflow()
+    pipeline.run()
