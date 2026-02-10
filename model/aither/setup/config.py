@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 @dataclass
 class AitherTrainingConfig:
-    model : str = "meta-llama/Meta-Llama-3-8B"
+    model : str = "microsoft/phi-2"
     contextWindow : int = 2048
     batches : int = 4
     learningRate : float = 1e-4
@@ -13,9 +13,9 @@ class AitherTrainingConfig:
     lora_rank : int = 16
     lora_scale : float = lora_rank * 2
     lora_drop : float = 0.06
-    target_modules : list[str] = ["q_proj", "k_proj", "v_proj", "o_proj"]
+    target_modules : list[str] = ["q_proj", "k_proj", "v_proj", "dense"]
     paddingSide : str = "right"
-    padToken : str = "<pad>"
+    padToken : str = "<|endoftext|>"
 
 
 
