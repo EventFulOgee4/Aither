@@ -59,3 +59,27 @@ class AitherWorkflow():
         question = example.get("questionTitle", "") + " " + example.get("questionText", "")
         answer = example.get("answerText", "")
         return "<|user|>" + question.strip() + "<|assistant|>" + answer
+
+    def setupModel(self):
+        self.aither = model().model
+        self.aither.to(self.device)
+        self.aither.train()
+        self.optimizer = torch.optim.AdamW(self.aither.parameters(), lr=config.learningRate, weight_decay=config.weightDecay)
+
+    def train(self):
+        for epoch in range(config.epochs):
+            for i, batch in enumerate(self.training_data):
+                batch = batch.to(self.device)
+
+                attention_mask = (batch != self.tokenizer.tokenizer.pad_token_id).long().to(self.device)
+
+                outputs = self.aither(input_ids=batch, attention_mask=attention_mask, labels=batch)
+                loss = outputs.loss / config.gradientAccSteps
+                loss.backward()
+
+                if (i + 1) % config.gradientAccSteps == 0:
+                    self.optimizer.step()
+                    self.optimizer.zero_grad()
+
+                if i % 100 == 0:
+                    print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item() * config.gradientAccSteps}")
