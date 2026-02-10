@@ -43,6 +43,8 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         session_id = self.request.query_params.get('session')
         if session_id:
             queryset = queryset.filter(session__id=session_id)
+        if sender:
+            queryset = queryset.filter(sender=sender)
         return queryset
 
     def perform_create(self, serializer):

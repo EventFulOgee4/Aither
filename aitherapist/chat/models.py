@@ -25,10 +25,10 @@ class ChatMessage(models.Model):
         ('ai', 'AI'),
     ]
 
-    session = models.ForeignKey(TherapySession, on_delete=models.CASCADE, related_name="messages")
+    session = models.ForeignKey(TherapySession, on_delete=models.CASCADE, related_name="messages", db_index=True)
     sender = models.CharField(max_length=10, choices=SENDER_CHOICES)
     message = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ['timestamp']
