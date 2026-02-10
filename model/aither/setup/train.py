@@ -1,3 +1,4 @@
+import os
 import torch
 from aither.setup.config import AitherTrainingConfig as config
 from aither.setup.tokenization import AitherTokenizer as tokenizer
@@ -37,6 +38,8 @@ for epoch in range(config.epochs):
         if i % 100 == 0:
             print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item() * config.gradientAccSteps}")
 
+savePath = os.path.join(os.path.dirname(__file__), "../../aither_trained")
+
 #Save the model
-aither.save_pretrained("./aither_trained")
-tok.tokenizer.save_pretrained("./aither_trained")
+aither.save_pretrained(savePath)
+tok.tokenizer.save_pretrained(savePath)
