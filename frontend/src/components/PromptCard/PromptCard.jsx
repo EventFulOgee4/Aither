@@ -1,12 +1,26 @@
-import React from "react";
+import React, { useState } from "react"; //added useState
 import "./promptcard.css";
 
 export default function PromptCard() {
+  //beginning of added code
+  const [message, setMessage] = useState("");
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+
+    console.log("Sending:", message);
+
+    // TEMP: later this will call backend
+    alert("You typed: " + message);
+
+    setMessage("");
+  };//end of added
   return (
     <div className="prompt-wrap">
       <div className="prompt-card">
         <div className="input-row">
-          <input placeholder="Ask Aither a question..." />
+          <input placeholder="Ask Aither a question..."
+            value={ message} onChange={(e) =>setMessage(e.target.value)} />
           <button className="mic">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path
@@ -32,7 +46,7 @@ export default function PromptCard() {
             <button className="small">Attach</button>
             <button className="small">Tone</button>
           </div>
-          <button className="send">
+          <button className="send" onClick={handleSend}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path
                 d="M22 2L11 13"
