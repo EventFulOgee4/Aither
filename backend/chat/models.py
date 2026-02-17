@@ -92,3 +92,7 @@ class AIInteraction(models.Model):
     response = models.TextField()
     latency_ms = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        # Shows: Session Title | Model | first 30 chars of response
+        return f"{self.session.title} | {self.model_name} | {self.response[:30]}..."

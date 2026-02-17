@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta #for JWT, added
+#added for env vars
+from decouple import config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -87,14 +90,21 @@ WSGI_APPLICATION = 'aitherapist.wsgi.application'
 #     }
 # }
 
+# Secret key
+SECRET_KEY = config('SECRET_KEY')
+
+# Debug
+DEBUG = config('DEBUG', default=False, cast=bool)
+
+# Database (CHange to PostgreSQL in production)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'aitherapist',
-        'USER': 'aitherapist_user',
-        'PASSWORD': 'StrongPassword123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST', default='127.0.0.1'),
+        'PORT': config('DB_PORT', default='5432'),
     }
 }
 
@@ -116,6 +126,9 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+#added 
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'yourdomain.com']  # Update with your domain in production
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
