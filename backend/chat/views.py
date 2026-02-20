@@ -40,18 +40,19 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = ChatMessage.objects.filter(session__user=self.request.user)
+
         session_id = self.request.query_params.get('session')
         if session_id:
             queryset = queryset.filter(session__id=session_id)
+
+        sender = self.request.query_params.get('sender')
         if sender:
             queryset = queryset.filter(sender=sender)
+
         return queryset
 
     def perform_create(self, serializer):
         session = serializer.validated_data['session']
-        session.last_activity = user_message.timestamp
-        session.message_count += 2  # user + AI
-        session.save()
 
         # Ownership check
         if session.user != self.request.user:
@@ -60,21 +61,27 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         # Save user message
         self.user_message = serializer.save(sender="user")
 
-        # Update session activity
-        session.last_activity = timezone.now()
-        session.save(update_fields=["last_activity"])
+        # Generate AI response
+        ai_text = get_ai_response(self.user_message.message)
 
-        # Generate AI message
+        # Save AI message
         self.ai_message = ChatMessage.objects.create(
             session=session,
             sender="ai",
-            message=get_ai_response(self.user_message.message)
+            message=ai_text
         )
+
+        # Update session metadata
+        session.last_activity = timezone.now()
+        session.message_count += 2
+        session.save(update_fields=["last_activity", "message_count"])
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         self.perform_create(serializer)
+
         return Response({
             "user_message": ChatMessageSerializer(self.user_message).data,
             "ai_message": ChatMessageSerializer(self.ai_message).data
