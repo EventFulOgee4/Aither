@@ -1,35 +1,65 @@
 .sidebar {
-  width: 72px;
+  width: 260px; /* ⬅️ widened */
   background: transparent;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: space-between;
-  padding: 24px 10px;
+  padding: 20px 14px;
 }
+
+/* ─── TOP ICONS ───────────────────────── */
 .sidebar-top {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
 }
+
 .icon-btn {
   width: 48px;
   height: 48px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
 }
+
 .icon-btn:hover {
   transform: translateY(-2px);
   color: var(--lavender);
-  border-color: var(--border);
+  border-color: rgba(155, 143, 230, 0.4);
 }
+
+/* ─── SESSIONS LIST AREA ───────────────── */
+.sidebar .sessions-wrap {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 10px;
+  padding-right: 4px;
+}
+
+/* subtle scrollbar */
+.sidebar .sessions-wrap::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar .sessions-wrap::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+}
+
+/* ─── BOTTOM AVATAR ───────────────────── */
+.sidebar-bottom {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+}
+
 .avatar {
   width: 36px;
   height: 36px;
