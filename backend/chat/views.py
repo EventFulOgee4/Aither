@@ -4,7 +4,7 @@ from django.shortcuts import render
 from rest_framework import viewsets, generics, permissions
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import TherapySession, ChatMessage, MoodEntry
+from .models import TherapySession, ChatMessage, MoodEntry, AIInteraction
 from .serializers import TherapySessionSerializer, ChatMessageSerializer, MoodEntrySerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import PermissionDenied
@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Avg, Min, Max
 from django.db.models.functions import Length
 from django.utils import timezone
+
 
 
 # Simple AI response stub (replace with real AI later)
@@ -107,7 +108,7 @@ class MoodEntryViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        mood = serializer.save(user=self.request.user)
         if mood.session:
             mood.session.last_activity = timezone.now()
             mood.session.save(update_fields=["last_activity"])
