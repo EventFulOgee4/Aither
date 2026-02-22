@@ -1,0 +1,11 @@
+from django.urls import path
+from .views import test_api, TherapySessionViewSet, ChatMessageViewSet, MoodEntryViewSet, session_metadata
+
+urlpatterns = [
+    path('test/', test_api),
+    path('sessions/', TherapySessionViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path('messages/', ChatMessageViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path('moods/', MoodEntryViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path('sessions/<int:session_id>/metadata/', session_metadata, name='session-metadata'),
+]
+
