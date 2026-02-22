@@ -1,4 +1,5 @@
 from sentence_transformers import SentenceTransformer
+EMBEDDER = SentenceTransformer("all-MiniLM-L6-v2")
 import numpy as np
 
 
@@ -6,7 +7,7 @@ class AitherRAG():
     RETRIEVAL_LIMIT = 3
 
     def __init__(self):
-        self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        self.embedder = EMBEDDER
         self.knowledge_base = {
             "cbt": {
                 "category": "Cognitive Behavioral Therapy",

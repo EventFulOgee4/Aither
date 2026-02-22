@@ -1,5 +1,5 @@
 #This module is ESSENTIAL for Aither, it detects crisis detection within user messages, and patterns across pattern history
-from aither.modules.memory import AitherMemory as mem
+from ml.memory import AitherMemory as mem
 from enum import Enum
 from dataclasses import dataclass
 

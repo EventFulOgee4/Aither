@@ -14,6 +14,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Avg, Min, Max
 from django.db.models.functions import Length
 from django.utils import timezone
+from ml.brain import AitherBrain
+brain = AitherBrain()
 
 
 
@@ -65,7 +67,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
         # Generate AI response
         try:
-            ai_text = get_ai_response(self.user_message.message)
+            ai_text = brain.respond(self.user_message.message)
         except Exception:
             ai_text = "AI response unavailable."
 
