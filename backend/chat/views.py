@@ -1,3 +1,4 @@
+import time
 from django.shortcuts import render
 
 # Create your views here.
@@ -63,7 +64,10 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         self.user_message = serializer.save(sender="user")
 
         # Generate AI response
-        ai_text = get_ai_response(self.user_message.message)
+        try:
+            ai_text = get_ai_response(self.user_message.message)
+        except Exception:
+            ai_text = "AI response unavailable."
 
         # Save AI message
         self.ai_message = ChatMessage.objects.create(
@@ -74,8 +78,19 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
         # Update session metadata
         session.last_activity = timezone.now()
-        session.message_count += 2
+        if session.message_count is None:
+            session.message_count = 0
+
+        session.message_count += 2  # User + AI message
         session.save(update_fields=["last_activity", "message_count"])
+
+        AIInteraction.objects.create(
+            session=session,
+            model_name="stub-ai",
+            prompt=self.user_message.message,
+            response=ai_text,
+            latency_ms=0
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
