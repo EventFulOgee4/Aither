@@ -1,6 +1,32 @@
-const API_BASE = "http://127.0.0.1:8000/api/";
+export async function createSession() {
+  const token = localStorage.getItem("access");
 
-export async function getSessions() {
-  const response = await fetch(API_BASE + "sessions/");
+  const response = await fetch(API_BASE + "chat/sessions/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title: "New Session" }),
+  });
+
+  return response.json();
+}
+
+export async function sendMessage(sessionId, message) {
+  const token = localStorage.getItem("access");
+
+  const response = await fetch(API_BASE + "chat/messages/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      session: sessionId,
+      message: message,
+    }),
+  });
+
   return response.json();
 }

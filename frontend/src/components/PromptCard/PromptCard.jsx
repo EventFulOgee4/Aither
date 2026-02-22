@@ -1,26 +1,57 @@
-import React, { useState } from "react"; //added useState
+import React, { useState } from "react";
 import "./promptcard.css";
+import { createSession, sendMessage } from "../../api"; // adjust if path different
 
 export default function PromptCard() {
-  //beginning of added code
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
+  const handleSend = async () => {
+    if (!message.trim() || loading) return;
 
-    console.log("Sending:", message);
+    setLoading(true);
 
-    // TEMP: later this will call backend
-    alert("You typed: " + message);
+    try {
+      // 1️⃣ Create a new session
+      const session = await createSession();
+
+      if (!session?.id) {
+        alert("Failed to create session.");
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Send message to backend
+      const response = await sendMessage(session.id, message);
+
+      console.log("Backend response:", response);
+
+      // ⚠️ Depending on your serializer, response may differ
+      // For now just alert whole object
+      alert("Message sent! Check console for AI response.");
+
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Something went wrong. Are you logged in?");
+    }
 
     setMessage("");
-  };//end of added
+    setLoading(false);
+  };
+
   return (
     <div className="prompt-wrap">
       <div className="prompt-card">
         <div className="input-row">
-          <input placeholder="Ask Aither a question..."
-            value={ message} onChange={(e) =>setMessage(e.target.value)} />
+          <input
+            placeholder="Ask Aither a question..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSend();
+            }}
+          />
+
           <button className="mic">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path
@@ -46,21 +77,28 @@ export default function PromptCard() {
             <button className="small">Attach</button>
             <button className="small">Tone</button>
           </div>
-          <button className="send" onClick={handleSend}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M22 2L11 13"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M22 2l-7 20-4-9-9-4 20-7z"
-                stroke="currentColor"
-                strokeWidth="0"
-              />
-            </svg>
+
+          <button
+            className="send"
+            onClick={handleSend}
+            disabled={loading}
+          >
+            {loading ? "..." : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M22 2L11 13"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M22 2l-7 20-4-9-9-4 20-7z"
+                  stroke="currentColor"
+                  strokeWidth="0"
+                />
+              </svg>
+            )}
           </button>
         </div>
       </div>
