@@ -10,6 +10,14 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# add: <repo_root>/model to PYTHONPATH so `import aither...` works
+REPO_ROOT = BASE_DIR.parent
+sys.path.insert(0, str(REPO_ROOT / "model"))
 from pathlib import Path
 from datetime import timedelta #for JWT, added
 #added for env vars

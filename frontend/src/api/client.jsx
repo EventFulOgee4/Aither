@@ -6,70 +6,83 @@ export const api = axios.create({
   baseURL: BASE_URL,
 });
 
-// Attach access token to every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+// ==============================
+// Attach access token to requests
+// ==============================
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-// --- Refresh logic ---
+// ==============================
+// Token refresh handling
+// ==============================
 let isRefreshing = false;
-let pendingQueue = [];
+let failedQueue = [];
 
-function resolveQueue(error, token = null) {
-  pendingQueue.forEach((p) => {
-    if (error) p.reject(error);
-    else p.resolve(token);
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else prom.resolve(token);
   });
-  pendingQueue = [];
-}
+  failedQueue = [];
+};
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const original = error.config;
+    const originalRequest = error.config;
 
-    // If unauthorized AND we haven't retried yet
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true;
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
 
       const refresh = localStorage.getItem("refresh");
+
       if (!refresh) {
-        // no refresh token => force login
         localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
         return Promise.reject(error);
       }
 
-      // If a refresh is already in progress, wait for it
+      // If refresh already in progress, queue request
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          pendingQueue.push({ resolve, reject });
-        }).then((newToken) => {
-          original.headers.Authorization = `Bearer ${newToken}`;
-          return api(original);
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
         });
       }
 
       isRefreshing = true;
 
       try {
-        const res = await axios.post(`${BASE_URL}/auth/refresh/`, { refresh });
-        const newAccess = res.data.access;
+        const res = await axios.post(
+          `${BASE_URL}/token/refresh/`,
+          { refresh }
+        );
 
+        const newAccess = res.data.access;
         localStorage.setItem("access", newAccess);
 
-        resolveQueue(null, newAccess);
+        processQueue(null, newAccess);
 
-        // retry original request with new token
-        original.headers.Authorization = `Bearer ${newAccess}`;
-        return api(original);
-      } catch (refreshErr) {
-        // refresh failed => clear tokens and force login
-        resolveQueue(refreshErr, null);
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+        return api(originalRequest);
+      } catch (err) {
+        processQueue(err, null);
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        return Promise.reject(refreshErr);
+        return Promise.reject(err);
       } finally {
         isRefreshing = false;
       }

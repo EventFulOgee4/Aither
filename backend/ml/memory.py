@@ -1,6 +1,6 @@
-from aither.setup.tokenization import AitherTokenizer as tok
-from aither.setup.config import AitherTrainingConfig as settings
-from aither.setup.model import AitherModel as model
+from model.aither.setup.tokenization import AitherTokenizer as tok
+from model.aither.setup.config import AitherTrainingConfig as settings
+from model.aither.setup.model import AitherModel as model
 
 
 class AitherMemory():
