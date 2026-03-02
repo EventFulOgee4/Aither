@@ -1,1 +1,4 @@
 model/aither-env
+model/aither-mini/
+model/aither_trained/
+model/aither_merged/
