@@ -114,5 +114,18 @@ class AitherSafety():
                 confidence=temp_confidence,
                 toneChange="N/A" #subject to change later with memory integration
             )
+            
+    def check(self, message: str):
+        """
+        Compatibility method for views.py/loader.py.
+        Returns (ok: bool, reason: str)
+        """
+        assessment = self.detect_crisis(message)
+        risk = assessment.riskLevel
+
+        if risk in (RiskAssessment.CRITICAL, RiskAssessment.URGENT):
+            return False, "crisis_detected"
+
+        return True, "ok"
 
 
