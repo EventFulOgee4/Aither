@@ -12,6 +12,17 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import sys
 from pathlib import Path
+import os, sys
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../backend
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))           # .../Aither
+MODEL_DIR = os.path.join(PROJECT_ROOT, "model")                        # .../Aither/model
+
+# So "import aither..." works
+sys.path.insert(0, MODEL_DIR)
+
+# So absolute imports from project root work too (optional but helpful)
+sys.path.insert(0, PROJECT_ROOT)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BASE_DIR.parent
