@@ -1,4 +1,6 @@
 import time
+from functools import lru_cache
+
 from django.utils import timezone
 from django.db.models import Avg, Min, Max
 from django.db.models.functions import Length
@@ -14,34 +16,107 @@ from .serializers import TherapySessionSerializer, ChatMessageSerializer, MoodEn
 
 
 # ----------------------------
-# Optional ML brain (lazy load)
+# ML Engine (load once per process)
 # ----------------------------
-_brain_instance = None
-_brain_error = None
 
-def get_brain():
+@lru_cache(maxsize=1)
+def get_engine():
     """
-    Lazy-load ML brain so Django can boot even if ML deps/modules are missing.
+    Load the ML engine once per Django process.
+
+    Prefer loader (real model integration). Fall back to AitherBrain if present.
     """
-    global _brain_instance, _brain_error
+    # Style 1: Loader-style model dict (recommended long term)
+    try:
+        from ml.loader import get_model
+        models = get_model()
+        if isinstance(models, dict):
+            print("✅ ML engine: loader loaded. Keys:", list(models.keys()))
+        else:
+            print("✅ ML engine: loader loaded (non-dict):", type(models))
+        return {"mode": "loader", "models": models}
+    except Exception as e:
+        print("⚠️ ml.loader.get_model not available:", repr(e))
 
-    if _brain_instance is not None:
-        return _brain_instance
-    if _brain_error is not None:
-        return None
-
+    # Style 2: Your current brain class (backward compatible)
     try:
         from ml.brain import AitherBrain
-        _brain_instance = AitherBrain()
-        return _brain_instance
+        brain = AitherBrain()
+        print("✅ ML engine: AitherBrain loaded:", type(brain))
+        return {"mode": "brain", "brain": brain}
     except Exception as e:
-        _brain_error = e
-        print("⚠️ ML brain disabled:", e)
-        return None
+        print("⚠️ AitherBrain not available:", repr(e))
+
+    # Nothing available
+    print("❌ ML engine: none (will use fallback)")
+    return {"mode": "none"}
 
 
 def fallback_ai_response(user_message: str) -> str:
     return "Thanks for sharing. I’m here with you — tell me more."
+
+
+def generate_ai_response(user_text: str, history=None) -> tuple[str, str]:
+    """
+    Returns (ai_text, model_name)
+    """
+    engine = get_engine()
+    mode = engine.get("mode")
+    print("ENGINE MODE:", mode)
+
+    if mode == "brain":
+        brain = engine["brain"]
+        try:
+            ai_text = brain.respond(user_text)
+            return ai_text, "aither-brain"
+        except Exception as e:
+            print("⚠️ brain.respond failed:", repr(e))
+            return fallback_ai_response(user_text), "fallback"
+
+    if mode == "loader":
+        models = engine.get("models")
+
+        if not isinstance(models, dict):
+            print("⚠️ loader returned non-dict:", type(models))
+            return fallback_ai_response(user_text), "fallback"
+
+        # Optional safety check if your loader provides it
+        safety = models.get("safety")
+        if safety is not None:
+            try:
+                ok, _reason = safety.check(user_text)
+                if not ok:
+                    return "I can’t help with that.", "safety-block"
+            except Exception as e:
+                print("⚠️ safety.check failed:", repr(e))
+
+        rag = models.get("rag")
+        if rag is None:
+            print("⚠️ loader models has no 'rag' (or it's None). Keys:", list(models.keys()))
+            return fallback_ai_response(user_text), "fallback"
+
+        # Try calling your model with history if supported
+        try:
+            if history is not None:
+                ai_text = rag.generate(user_text, history=history)
+            else:
+                ai_text = rag.generate(user_text)
+            return ai_text, "aither-model"
+
+        except TypeError:
+            # If rag.generate doesn't accept history, call without it
+            try:
+                ai_text = rag.generate(user_text)
+                return ai_text, "aither-model"
+            except Exception as e:
+                print("⚠️ rag.generate failed:", repr(e))
+                return fallback_ai_response(user_text), "fallback"
+
+        except Exception as e:
+            print("⚠️ rag.generate failed:", repr(e))
+            return fallback_ai_response(user_text), "fallback"
+
+    return fallback_ai_response(user_text), "fallback"
 
 
 class TherapySessionViewSet(viewsets.ModelViewSet):
@@ -86,21 +161,23 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         # Save user message
         self.user_message = serializer.save(sender="user")
 
+        # Build last ~10 messages as history (oldest -> newest)
+        history_qs = (
+            ChatMessage.objects
+            .filter(session=session)
+            .order_by("-timestamp")
+            .values("sender", "message")[:10]
+        )
+        history = list(history_qs)[::-1]
+
         # Generate AI response
         start = time.time()
-        brain = get_brain()
-
-        if brain is None:
+        try:
+            ai_text, model_name = generate_ai_response(self.user_message.message, history=history)
+        except Exception as e:
+            print("⚠️ generate_ai_response failed:", repr(e))
             ai_text = fallback_ai_response(self.user_message.message)
             model_name = "fallback"
-        else:
-            try:
-                ai_text = brain.respond(self.user_message.message)
-                model_name = "aither-brain"
-            except Exception as e:
-                print("⚠️ brain.respond failed:", e)
-                ai_text = fallback_ai_response(self.user_message.message)
-                model_name = "fallback"
 
         latency_ms = int((time.time() - start) * 1000)
 
