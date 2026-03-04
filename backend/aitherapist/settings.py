@@ -14,8 +14,6 @@ import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# add: <repo_root>/model to PYTHONPATH so `import aither...` works
 REPO_ROOT = BASE_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "model"))
 from pathlib import Path
