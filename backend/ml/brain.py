@@ -1,4 +1,6 @@
 print("✅ LOADED NEW AitherBrain from backend/ml/brain.py")
+
+import re
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -18,33 +20,36 @@ class AitherBrain:
     """
 
     def __init__(self):
-        # Local LLM (lightweight)
         self.model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=True)
         self.model = AutoModelForCausalLM.from_pretrained(self.model_name)
 
-        # Device
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
         self.model.eval()
 
-        # Memory MUST receive tokenizer + model (your AitherMemory signature)
+        # Your memory module expects tokenizer + model
         self.memory = AitherMemory(tokenizer=self.tokenizer, model=self.model)
 
-        # Other modules
         self.safety = AitherSafety(self.memory)
         self.rag = AitherRAG()
         self.emotion = AitherEmotionalTones()
+
+        # If pad token is missing, set it to eos to avoid warnings/errors
+        if self.tokenizer.pad_token_id is None and self.tokenizer.eos_token_id is not None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def _build_system_style(self) -> str:
         return (
             "You are Aither, a supportive mental-health style assistant.\n"
             "- Be empathetic, curious, and practical.\n"
             "- Ask 1-2 thoughtful follow-up questions.\n"
-            "- Avoid repeating the same generic sentence.\n"
+            "- Avoid repeating generic phrases.\n"
             "- Keep responses concise (3-8 sentences).\n"
             "- Do not give medical/legal instructions.\n"
-            "- If the user seems in immediate danger, encourage reaching out to trusted people or local emergency services.\n"
+            "- IMPORTANT: Output ONLY Aither's reply.\n"
+            "- Do NOT write 'User:' or continue the conversation.\n"
+            "- Stop after your reply.\n"
         )
 
     def _format_context(self, user_message: str) -> str:
@@ -61,48 +66,135 @@ class AitherBrain:
 
         rag_block = ""
         if rag_snippets:
-            rag_block = "\n\nRelevant context:\n" + "\n---\n".join(rag_snippets[:3]) + "\n"
+            rag_block = "Relevant context:\n" + "\n---\n".join(rag_snippets[:3])
 
         # Memory context (use your AitherMemory.toString())
         mem_block = ""
         try:
-            # Compact if needed (your memory module does nothing if under token limit)
             self.memory.compact()
             history_text = self.memory.toString().strip()
             if history_text:
-                mem_block = f"\n\nConversation so far:\n{history_text}\n"
+                mem_block = f"Conversation so far:\n{history_text}"
         except Exception:
             pass
 
-        return rag_block + mem_block
+        parts = [p for p in [mem_block, rag_block] if p]
+        return ("\n\n".join(parts)).strip()
+
+    def _build_chat_prompt(self, system: str, extra: str, user_message: str) -> str:
+        """
+        Prefer tokenizer.apply_chat_template if available (best for chat models).
+        Fallback to TinyLlama-style tags.
+        """
+        content_user = user_message.strip()
+        if extra:
+            content_user = f"{extra}\n\nUser message:\n{content_user}"
+
+        messages = [
+            {"role": "system", "content": system.strip()},
+            {"role": "user", "content": content_user},
+        ]
+
+        # Best-case: tokenizer knows the model's chat template
+        if hasattr(self.tokenizer, "apply_chat_template"):
+            try:
+                return self.tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            except Exception:
+                pass
+
+        # Fallback (works well for many TinyLlama/Llama-chat variants)
+        return (
+            f"<|system|>\n{system.strip()}\n"
+            f"<|user|>\n{content_user}\n"
+            f"<|assistant|>\n"
+        )
+
+    def _clean_reply(self, text: str) -> str:
+        """
+        Remove prompt artifacts and prevent the model from continuing with new roles.
+        """
+        if not text:
+            return ""
+
+        # Strip common artifacts/tags if they leak
+        text = text.replace("[INST]", "").replace("[/INST]", "")
+        text = text.replace("<<SYS>>", "").replace("<</SYS>>", "")
+
+        # Hard stop if the model starts writing new roles / transcript
+        stop_markers = [
+            "\nUser:", "\nuser:", "\nUSER:",
+            "\nAssistant:", "\nassistant:", "\nASSISTANT:",
+            "\nAither:", "\nAI:", "\nSystem:", "\nSYSTEM:",
+            "<|user|>", "<|system|>", "<|assistant|>",
+        ]
+        cut = len(text)
+        for m in stop_markers:
+            idx = text.find(m)
+            if idx != -1:
+                cut = min(cut, idx)
+
+        text = text[:cut].strip()
+
+        # Remove accidental leading role labels
+        text = re.sub(r"^(Aither|Assistant|AI)\s*:\s*", "", text, flags=re.IGNORECASE).strip()
+
+        return text
+    
+    def _clean_model_output(self, text: str) -> str:
+        if not text:
+            return ""
+
+        # Cut off if the model starts continuing the conversation/log
+        stop_markers = [
+            "\nUser:", "\nUSER:", "\nuser:",
+            "\nAither:", "\nAI:", "\nAssistant:", "\nASSISTANT:",
+            "[INST]", "[/INST]", "<<SYS>>", "<</SYS>>",
+            "<s>", "</s>"
+        ]
+
+        cut = len(text)
+        for m in stop_markers:
+            idx = text.find(m)
+            if idx != -1:
+                cut = min(cut, idx)
+
+        cleaned = text[:cut].strip()
+
+        # Sometimes it starts with a leftover label
+        for prefix in ("Aither:", "AI:", "Assistant:"):
+            if cleaned.startswith(prefix):
+                cleaned = cleaned[len(prefix):].strip()
+
+        return cleaned
 
     def _generate(self, prompt: str) -> str:
-        enc = self.tokenizer(prompt, return_tensors="pt")
-        input_ids = enc["input_ids"].to(self.device)
-        attention_mask = enc.get("attention_mask")
-        if attention_mask is not None:
-            attention_mask = attention_mask.to(self.device)
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        input_len = inputs["input_ids"].shape[1]
 
         with torch.no_grad():
             out = self.model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                max_new_tokens=140,
+                **inputs,
+                max_new_tokens=180,
                 do_sample=True,
-                temperature=0.8,
-                top_p=0.92,
+                temperature=0.7,
+                top_p=0.9,
                 repetition_penalty=1.12,
+                no_repeat_ngram_size=3,  # helps reduce looping / transcript continuation
                 pad_token_id=self.tokenizer.eos_token_id,
                 eos_token_id=self.tokenizer.eos_token_id,
             )
 
-        full = self.tokenizer.decode(out[0], skip_special_tokens=True)
+        # Only decode tokens generated AFTER the prompt
+        new_tokens = out[0][input_len:]
+        raw = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
 
-        # Strip prompt if echoed (works for some models; harmless if not)
-        if full.startswith(prompt):
-            full = full[len(prompt):].strip()
+        cleaned = self._clean_model_output(raw)
 
-        return full.strip() or "I’m here with you. What’s been on your mind lately?"
+        return cleaned or "I’m here with you. What’s been on your mind lately?"
 
     def respond(self, user_message: str) -> str:
         # 1) safety check
@@ -120,7 +212,7 @@ class AitherBrain:
         except Exception:
             _emo = None
 
-        # 3) store user message into memory (your method name)
+        # 3) store user message into memory
         try:
             self.memory.addMessageToContext("user", user_message)
         except Exception:
@@ -129,20 +221,7 @@ class AitherBrain:
         # 4) build prompt with history + rag
         system = self._build_system_style()
         extra = self._format_context(user_message)
-
-        prompt = (
-            "<s>[INST] <<SYS>>\n"
-            "You are Aither, an empathetic AI therapist.\n\n"
-            "Rules:\n"
-            "- Validate the user's feelings\n"
-            "- Ask thoughtful follow-up questions\n"
-            "- Avoid repeating generic phrases\n"
-            "- Keep responses 4–6 sentences\n"
-            "- Be warm and supportive\n"
-            "<</SYS>>\n\n"
-            f"User: {user_message}\n"
-            "[/INST]\n"
-        )
+        prompt = self._build_chat_prompt(system, extra, user_message)
 
         # 5) generate
         reply = self._generate(prompt)

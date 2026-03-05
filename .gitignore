@@ -2,3 +2,14 @@ model/aither-env
 model/aither-mini/
 model/aither_trained/
 model/aither_merged/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Database
+*.sqlite3
