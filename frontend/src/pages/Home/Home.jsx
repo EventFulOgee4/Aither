@@ -6,6 +6,7 @@ import Topbar from "../../components/Topbar/Topbar";
 import OrbLogo from "../../components/OrbLogo/OrbLogo";
 import PromptCard from "../../components/PromptCard/PromptCard";
 import ExampleCards from "../../components/ExampleCards/ExampleCards";
+import { ensureFreshAccessToken } from "../../api/client";
 
 import {
   createSession,
@@ -49,10 +50,12 @@ export default function Home() {
     setMessages(msgs);
   }
 
-  // 🔹 Initial load
-  useEffect(() => {
+    useEffect(() => {
     (async () => {
       try {
+        // Make sure access token is fresh before the first API call
+        await ensureFreshAccessToken();
+
         const list = await refreshSessions(true);
         if (list.length) {
           const firstId = list[0].id;
