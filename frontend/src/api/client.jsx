@@ -91,3 +91,40 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+// ==============================
+// Proactive refresh (avoid initial 401)
+// ==============================
+function getJwtPayload(token) {
+  try {
+    const base64 = token.split(".")[1];
+    const json = atob(base64.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function isExpired(token, skewSeconds = 30) {
+  const payload = getJwtPayload(token);
+  if (!payload?.exp) return true;
+  const now = Math.floor(Date.now() / 1000);
+  return payload.exp <= now + skewSeconds;
+}
+
+export async function ensureFreshAccessToken() {
+  const access = localStorage.getItem("access");
+  const refresh = localStorage.getItem("refresh");
+
+  if (!refresh) return null;
+
+  try {
+    const res = await axios.post(`${BASE_URL}/token/refresh/`, { refresh });
+    const newAccess = res.data.access;
+    localStorage.setItem("access", newAccess);
+    return newAccess;
+  } catch {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    return null;
+  }
+}
