@@ -10,6 +10,7 @@ import { ensureFreshAccessToken } from "../../api/client";
 
 import {
   createSession,
+  deleteSession,
   getMessages,
   listSessions,
   sendMessage,
@@ -25,16 +26,10 @@ export default function Home() {
 
   const bottomRef = useRef(null);
 
-  // 🔹 SAFE session refresh (handles DRF pagination)
   async function refreshSessions(selectIfEmpty = true) {
-    console.log("Fetching sessions...");
     const data = await listSessions();
-    console.log("Sessions raw:", data);
-
-    // DRF pagination-safe
     const list = Array.isArray(data) ? data : data?.results ?? [];
 
-    console.log("Sessions list:", list);
     setSessions(list);
 
     if (selectIfEmpty && !activeSessionId && list.length) {
@@ -45,34 +40,42 @@ export default function Home() {
   }
 
   async function loadSession(sessionId) {
+    if (!sessionId) {
+      setActiveSessionId(null);
+      setMessages([]);
+      return;
+    }
+
     setActiveSessionId(sessionId);
     const msgs = await getMessages(sessionId);
     setMessages(msgs);
   }
 
-    useEffect(() => {
+  useEffect(() => {
     (async () => {
       try {
-        // Make sure access token is fresh before the first API call
         await ensureFreshAccessToken();
 
         const list = await refreshSessions(true);
-        if (list.length) {
+
+        if (list.length && list[0]?.id) {
           const firstId = list[0].id;
           setActiveSessionId(firstId);
           const msgs = await getMessages(firstId);
           setMessages(msgs);
+        } else {
+          setActiveSessionId(null);
+          setMessages([]);
         }
       } catch (e) {
         console.error(e);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, sending]);
 
   async function handleNewChat() {
     try {
@@ -85,33 +88,98 @@ export default function Home() {
     }
   }
 
-  async function handleSend() {
-    const text = input.trim();
+  async function handleDeleteChat() {
+    if (!activeSessionId) return;
+
+    const confirmed = window.confirm("Delete this chat?");
+    if (!confirmed) return;
+
+    try {
+      const deletingId = activeSessionId;
+
+      await deleteSession(deletingId);
+
+      const updated = await listSessions();
+      setSessions(updated);
+
+      const remaining = updated.filter((s) => s.id !== deletingId);
+
+      if (remaining.length > 0) {
+        await loadSession(remaining[0].id);
+      } else {
+        setActiveSessionId(null);
+        setMessages([]);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Could not delete chat.");
+    }
+  }
+
+  async function handleSend(prefilledText) {
+    const text = (prefilledText ?? input).trim();
     if (!text || sending) return;
 
     setSending(true);
+
+    const tempUser = {
+      id: `temp-${Date.now()}`,
+      role: "user",
+      content: text,
+    };
+
     try {
-      // optimistic render
-      const tempUser = {
-        id: `temp-${Date.now()}`,
-        role: "user",
-        content: text,
-      };
       setMessages((prev) => [...prev, tempUser]);
       setInput("");
 
       const res = await sendMessage(text, activeSessionId || undefined);
 
-      // refresh from server (includes assistant + emotion)
+      const realUserMsg = res.user_message
+        ? {
+            id: res.user_message.id,
+            role: res.user_message.sender === "ai" ? "assistant" : "user",
+            content: res.user_message.message,
+            emotion: res.user_message.emotion ?? null,
+            confidence: res.user_message.confidence ?? null,
+            timestamp: res.user_message.timestamp ?? null,
+          }
+        : null;
+
+      const aiMsg = res.ai_message
+        ? {
+            id: res.ai_message.id,
+            role: res.ai_message.sender === "ai" ? "assistant" : "user",
+            content: res.ai_message.message,
+            emotion: res.ai_message.emotion ?? null,
+            confidence: res.ai_message.confidence ?? null,
+            timestamp: res.ai_message.timestamp ?? null,
+          }
+        : null;
+
+      const returnedSessionId = res.session?.id ?? activeSessionId ?? null;
+      setActiveSessionId(returnedSessionId);
+
+      setMessages((prev) => {
+        const withoutTemp = prev.filter((m) => m.id !== tempUser.id);
+        const next = [...withoutTemp];
+
+        if (realUserMsg) next.push(realUserMsg);
+        if (aiMsg) next.push(aiMsg);
+
+        return next;
+      });
+
       await refreshSessions(false);
-      await loadSession(res.session.id);
     } catch (e) {
       console.error(e);
+      setMessages((prev) => prev.filter((m) => m.id !== tempUser.id));
       alert("Send failed. Check login token and backend.");
     } finally {
       setSending(false);
     }
   }
+
+  const hasMessages = messages.length > 0;
 
   return (
     <div className="home-root">
@@ -119,65 +187,72 @@ export default function Home() {
         sessions={sessions}
         activeSessionId={activeSessionId}
         onSelectSession={loadSession}
+        onNewChat={handleNewChat}
+        onDeleteChat={handleDeleteChat}
       />
 
       <div className="home-main">
-        <Topbar onNewChat={handleNewChat} />
+        <Topbar />
 
-        <main className="home-content">
-          <OrbLogo />
-          <h1 className="headline">you feeling today?</h1>
+        <main
+          className={`home-content ${hasMessages ? "chat-active" : "empty-state"}`}
+        >
+          <div className="animated-bg">
+            <div className="bg-blob blob-1" />
+            <div className="bg-blob blob-2" />
+            <div className="bg-blob blob-3" />
+            <div className="bg-grid" />
+          </div>
 
-          {/* Messages */}
-          {messages.length > 0 && (
-            <div
-              style={{
-                width: "min(900px, 92vw)",
-                margin: "18px auto",
-                textAlign: "left",
-              }}
-            >
+          <div className="ambient-glow ambient-glow-1" />
+          <div className="ambient-glow ambient-glow-2" />
+
+          <div className={`hero-block ${hasMessages ? "hero-compact" : ""}`}>
+            <OrbLogo sending={sending} compact={hasMessages} />
+            <h1 className="headline">How are you feeling today?</h1>
+            {!hasMessages && (
+              <p className="subheadline">
+                Talk, reflect, and grow with Aither.
+              </p>
+            )}
+          </div>
+
+          {hasMessages && (
+            <div className="messages-wrap">
               {messages.map((m) => (
                 <div
                   key={m.id}
-                  style={{
-                    marginBottom: 10,
-                    display: "flex",
-                    justifyContent:
-                      m.role === "user" ? "flex-end" : "flex-start",
-                  }}
+                  className={`message-row ${
+                    m.role === "user" ? "user-row" : "assistant-row"
+                  }`}
                 >
                   <div
-                    style={{
-                      maxWidth: "80%",
-                      padding: "10px 12px",
-                      borderRadius: 14,
-                      background:
-                        m.role === "user"
-                          ? "rgba(155,143,230,.25)"
-                          : "rgba(255,255,255,.08)",
-                      border: "1px solid rgba(255,255,255,.10)",
-                      whiteSpace: "pre-wrap",
-                    }}
+                    className={`message-bubble ${
+                      m.role === "user" ? "user-bubble" : "assistant-bubble"
+                    }`}
                   >
-                    {m.content}
+                    <div>{m.content}</div>
+
                     {m.role === "assistant" && m.emotion && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          opacity: 0.65,
-                          marginTop: 6,
-                        }}
-                      >
+                      <div className="message-meta">
                         emotion: {m.emotion}
-                        {m.confidence != null
-                          ? ` (${m.confidence})`
-                          : ""}
+                        {m.confidence != null ? ` (${m.confidence})` : ""}
                       </div>
                     )}
                   </div>
                 </div>
               ))}
+
+              {sending && (
+                <div className="message-row assistant-row">
+                  <div className="message-bubble assistant-bubble thinking-bubble">
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                  </div>
+                </div>
+              )}
+
               <div ref={bottomRef} />
             </div>
           )}
@@ -185,14 +260,22 @@ export default function Home() {
           <PromptCard
             value={input}
             onChange={setInput}
-            onSend={handleSend}
+            onSend={() => handleSend()}
             disabled={sending}
           />
 
-          <div className="examples-label">
-            ASK AITHER ONE OF THE EXAMPLES BELOW
-          </div>
-          <ExampleCards />
+          {!hasMessages && (
+            <>
+              <div className="examples-label">
+                ASK AITHER ONE OF THE EXAMPLES BELOW
+              </div>
+              <ExampleCards
+                onSelectExample={(text) => {
+                  setInput(text);
+                }}
+              />
+            </>
+          )}
         </main>
       </div>
     </div>
