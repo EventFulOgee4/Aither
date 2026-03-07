@@ -2,6 +2,7 @@ print("✅ LOADED NEW AitherBrain from backend/ml/brain.py")
 
 import re
 import torch
+import time
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from ml.emotion import AitherEmotionalTones
@@ -15,7 +16,7 @@ class AitherBrain:
     Produces an assistant reply using:
       - safety check
       - optional RAG context
-      - memory context (message history + optional compaction)
+      - memory context
       - a local text-generation model
     """
 
@@ -25,83 +26,100 @@ class AitherBrain:
         self.model = AutoModelForCausalLM.from_pretrained(self.model_name)
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print("Aither device:", self.device)
         self.model.to(self.device)
         self.model.eval()
 
-        # Your memory module expects tokenizer + model
         self.memory = AitherMemory(tokenizer=self.tokenizer, model=self.model)
-
         self.safety = AitherSafety(self.memory)
         self.rag = AitherRAG()
         self.emotion = AitherEmotionalTones()
 
-        # If pad token is missing, set it to eos to avoid warnings/errors
         if self.tokenizer.pad_token_id is None and self.tokenizer.eos_token_id is not None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def _build_system_style(self) -> str:
         return (
-            "You are Aither, an empathetic AI mental-health companion.\n"
-            "Your role is to help users reflect on their emotions and feel understood.\n\n"
-
-            "Guidelines:\n"
-            "- Respond like a supportive conversation partner, not a self-help article.\n"
-            "- Do NOT produce numbered lists or long step-by-step guides unless explicitly requested.\n"
-            "- Focus first on understanding the user's feelings before giving advice.\n"
-            "- Validate the emotion the user expresses.\n"
-            "- Keep answers short (3–5 sentences).\n"
-            "- Ask one gentle follow-up question to encourage reflection.\n"
-            "- Do not include labels like 'Assistant:', 'Response', 'AI:', or 'Aither:'.\n"
-            "- Output only the assistant's reply.\n"
-            "- Do not give more than 5 suggestions at once.\n"
-            "- Prefer short paragraphs over lists.\n"
-            "-If you feel like it is necessary add some emojis based on the mood of the user which can cheer them up\n"
+            "You are Aither, a warm and supportive AI companion.\n"
+            "Reply directly to the user as Aither.\n"
+            "Do not describe what you are about to write.\n"
+            "Do not say things like 'Here is a response', 'We can write', "
+            "'To respond to this user request', or similar meta commentary.\n"
+            "Do not write labels like 'Aither:', 'Assistant:', 'User:', or 'Response:'.\n"
+            "Do not simulate both sides of the conversation.\n"
+            "Do not produce a transcript.\n"
+            "Speak naturally, clearly, and compassionately.\n"
+            "Usually write 4 to 7 sentences.\n"
+            "Acknowledge the user's feeling and then offer practical help.\n"
+            "Ask at most one gentle follow-up question.\n"
+            "Usually write 2 to 4 sentences.\n"
         )
 
-    def _format_context(self, user_message: str) -> str:
-        # RAG snippets (optional)
+    def _format_history(self, history) -> str:
+        if not history:
+            return ""
+
+        lines = []
+        for item in history[-8:]:
+            sender = item.get("sender", "")
+            message = (item.get("message") or "").strip()
+            if not message:
+                continue
+
+            if sender == "user":
+                lines.append(f"User said: {message}")
+            else:
+                lines.append(f"Aither replied: {message}")
+
+        return "\n".join(lines)
+
+    def _format_context(self, user_message: str, history=None) -> str:
         rag_snippets = []
-        try:
-            rag_results = self.rag.retrieve(user_message, k=3)
-            for r in rag_results:
-                txt = (r.get("text") or "").strip()
-                if txt:
-                    rag_snippets.append(txt)
-        except Exception:
-            pass
+        blocks = []
 
-        rag_block = ""
+        hist_block = self._format_history(history)
+        if hist_block:
+            blocks.append("Recent conversation:\n" + hist_block)
+
+        use_rag = any(word in user_message.lower() for word in [
+            "tips", "advice", "help", "how", "cope", "stress", "anxiety", "depression"
+        ])
+
+        if use_rag:
+            try:
+                rag_results = self.rag.retrieve(user_message)
+                for r in rag_results[:2]:
+                    txt = (r.get("text") or "").strip()
+                    if txt:
+                        rag_snippets.append(txt)
+            except Exception as e:
+                print("⚠️ RAG retrieval failed:", repr(e))
+
         if rag_snippets:
-            rag_block = "Relevant context:\n" + "\n---\n".join(rag_snippets[:3])
+            blocks.append("Helpful background:\n" + "\n---\n".join(rag_snippets))
 
-        # Memory context (use your AitherMemory.toString())
-        mem_block = ""
-        try:
-            self.memory.compact()
-            history_text = self.memory.toString().strip()
-            if history_text:
-                mem_block = f"Conversation so far:\n{history_text}"
-        except Exception:
-            pass
-
-        parts = [p for p in [mem_block, rag_block] if p]
-        return ("\n\n".join(parts)).strip()
+        return "\n\n".join(blocks).strip()
 
     def _build_chat_prompt(self, system: str, extra: str, user_message: str) -> str:
-        """
-        Prefer tokenizer.apply_chat_template if available (best for chat models).
-        Fallback to TinyLlama-style tags.
-        """
-        content_user = user_message.strip()
+        user_content = user_message.strip()
+
         if extra:
-            content_user = f"{extra}\n\nUser message:\n{content_user}"
+            user_content = (
+                f"{extra}\n\n"
+                f"User message:\n{user_content}\n\n"
+                f"Now reply as Aither directly to the user."
+            )
+        else:
+            user_content = (
+                f"User message:\n{user_content}\n\n"
+                f"Now reply as Aither directly to the user."
+            )
 
         messages = [
             {"role": "system", "content": system.strip()},
-            {"role": "user", "content": content_user},
+            {"role": "user", "content": user_content},
         ]
 
-        # Best-case: tokenizer knows the model's chat template
         if hasattr(self.tokenizer, "apply_chat_template"):
             try:
                 return self.tokenizer.apply_chat_template(
@@ -112,135 +130,111 @@ class AitherBrain:
             except Exception:
                 pass
 
-        # Fallback (works well for many TinyLlama/Llama-chat variants)
         return (
             f"<|system|>\n{system.strip()}\n"
-            f"<|user|>\n{content_user}\n"
-            f"<|assistant|>"
+            f"<|user|>\n{user_content}\n"
+            f"<|assistant|>\n"
         )
 
-    def _clean_reply(self, text: str) -> str:
-        """
-        Remove prompt artifacts and prevent the model from continuing with new roles.
-        """
+    def _clean_model_output(self, text: str) -> str:
+        cleaned = ""
+
         if not text:
             return ""
 
-        # Strip common artifacts/tags if they leak
         text = text.replace("[INST]", "").replace("[/INST]", "")
         text = text.replace("<<SYS>>", "").replace("<</SYS>>", "")
+        text = text.replace("<s>", "").replace("</s>", "")
 
-        # Hard stop if the model starts writing new roles / transcript
-        stop_markers = [
-            "\nUser:", "\nuser:", "\nUSER:",
-            "\nAssistant:", "\nassistant:", "\nASSISTANT:",
-            "\nAither:", "\nAI:", "\nSystem:", "\nSYSTEM:",
-            "<|user|>", "<|system|>", "<|assistant|>",
-        ]
-        cut = len(text)
-        for m in stop_markers:
-            idx = text.find(m)
-            if idx != -1:
-                cut = min(cut, idx)
-
-        text = text[:cut].strip()
-
-        # Remove accidental leading role labels
-        text = re.sub(r"^(Aither|Assistant|AI)\s*:\s*", "", text, flags=re.IGNORECASE).strip()
-
-        return text
-    
-    def _clean_model_output(self, text: str) -> str:
-        if not text:
-            return ""
-
-        # Cut off if the model starts continuing the conversation/log
-        stop_markers = [
-            "\nUser:", "\nUSER:", "\nuser:",
-            "\nAither:", "\nAI:", "\nAssistant:", "\nASSISTANT:",
-            "[INST]", "[/INST]", "<<SYS>>", "<</SYS>>",
-            "<s>", "</s>"
+        stop_patterns = [
+            r"\n\s*User\s*:",
+            r"\n\s*Assistant\s*:",
+            r"\n\s*Aither\s*:",
+            r"\n\s*System\s*:",
+            r"<\|user\|>",
+            r"<\|assistant\|>",
+            r"<\|system\|>",
         ]
 
         cut = len(text)
-        for m in stop_markers:
-            idx = text.find(m)
-            if idx != -1:
-                cut = min(cut, idx)
+        for pattern in stop_patterns:
+            match = re.search(pattern, text, flags=re.IGNORECASE)
+            if match:
+                cut = min(cut, match.start())
 
         cleaned = text[:cut].strip()
 
-        # Sometimes it starts with a leftover label
-        for prefix in ("Aither:", "AI:", "Assistant:"):
-            if cleaned.startswith(prefix):
-                cleaned = cleaned[len(prefix):].strip()
+        meta_prefixes = [
+            r"^\s*Response\s*:\s*",
+            r"^\s*Assistant\s*:\s*",
+            r"^\s*Aither(\s*\(AI\))?\s*:\s*",
+            r"^\s*To respond to this user request, we can write\s*:\s*",
+            r"^\s*Here'?s a response\s*:\s*",
+            r"^\s*We can write\s*:\s*",
+            r"^\s*Suggested response\s*:\s*",
+        ]
+
+        for pattern in meta_prefixes:
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE).strip()
+
+        cleaned = re.sub(r"\b(User|Assistant|Aither|AI)\s*:\s*", "", cleaned, flags=re.IGNORECASE).strip()
+        cleaned = re.sub(r"\bUser\s*\.\s*", "", cleaned, flags=re.IGNORECASE).strip()
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+
+        if len(cleaned) > 1600:
+            cleaned = cleaned[:1600].rsplit(" ", 1)[0].strip() + "..."
 
         return cleaned
 
     def _generate(self, prompt: str) -> str:
+        raw = ""
+        cleaned = ""
+
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         input_len = inputs["input_ids"].shape[1]
 
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
-                max_new_tokens=256,
+                max_new_tokens=140,
+                min_new_tokens=24,
                 do_sample=True,
-                temperature=0.55,
+                temperature=0.65,
                 top_p=0.9,
-                repetition_penalty=1.12,
-                no_repeat_ngram_size=4,  # helps reduce looping / transcript continuation
+                repetition_penalty=1.08,
+                no_repeat_ngram_size=3,
                 pad_token_id=self.tokenizer.eos_token_id,
                 eos_token_id=self.tokenizer.eos_token_id,
+                use_cache=True,
             )
 
-        # Only decode tokens generated AFTER the prompt
         new_tokens = out[0][input_len:]
         raw = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
-
         cleaned = self._clean_model_output(raw)
 
-        return cleaned or "I’m here with you. What’s been on your mind lately?"
+        return cleaned or "I’m here with you. Tell me a little more."
 
-    def respond(self, user_message: str) -> str:
-        # TEMP FIX: avoid cross-turn / cross-session contamination
-        try:
-            self.memory.messages = []
-        except Exception:
-            pass
-        # 1) safety check
+    def respond(self, user_message: str, history=None) -> str:
         assessment = self.safety.detect_crisis(user_message)
         if getattr(assessment, "riskLevel", None) in (RiskAssessment.CRITICAL, RiskAssessment.URGENT):
             return (
                 "I’m really sorry you’re feeling this way. You don’t have to deal with it alone. "
                 "If you feel like you might hurt yourself or you’re not safe, please reach out to local emergency services "
-                "or someone you trust right now. If you want, tell me your country/city and I can help you find support options."
+                "or someone you trust right now. Tell me your country or city and I’ll help you find the right support."
             )
 
-        # 2) emotion tagging (optional)
         try:
-            _emo = self.emotion.analyze(user_message)
-        except Exception:
-            _emo = None
+            if hasattr(self.emotion, "analyze"):
+                self.emotion.analyze(user_message)
+            elif hasattr(self.emotion, "detect_tone"):
+                self.emotion.detect_tone(user_message)
+            elif hasattr(self.emotion, "get_tone"):
+                self.emotion.get_tone(user_message)
+        except Exception as e:
+            print("⚠️ emotion analysis failed:", repr(e))
 
-        # 3) store user message into memory
-        try:
-            self.memory.addMessageToContext("user", user_message)
-        except Exception:
-            pass
-
-        # 4) build prompt with history + rag
         system = self._build_system_style()
-        extra = self._format_context(user_message)
+        extra = self._format_context(user_message, history=history)
         prompt = self._build_chat_prompt(system, extra, user_message)
 
-        # 5) generate
-        reply = self._generate(prompt)
-
-        # 6) store assistant reply
-        try:
-            self.memory.addMessageToContext("assistant", reply)
-        except Exception:
-            pass
-
-        return reply
+        return self._generate(prompt)
