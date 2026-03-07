@@ -41,15 +41,21 @@ class AitherBrain:
 
     def _build_system_style(self) -> str:
         return (
-            "You are Aither, a supportive mental-health style assistant.\n"
-            "- Be empathetic, curious, and practical.\n"
-            "- Ask 1-2 thoughtful follow-up questions.\n"
-            "- Avoid repeating generic phrases.\n"
-            "- Keep responses concise (3-8 sentences).\n"
-            "- Do not give medical/legal instructions.\n"
-            "- IMPORTANT: Output ONLY Aither's reply.\n"
-            "- Do NOT write 'User:' or continue the conversation.\n"
-            "- Stop after your reply.\n"
+            "You are Aither, an empathetic AI mental-health companion.\n"
+            "Your role is to help users reflect on their emotions and feel understood.\n\n"
+
+            "Guidelines:\n"
+            "- Respond like a supportive conversation partner, not a self-help article.\n"
+            "- Do NOT produce numbered lists or long step-by-step guides unless explicitly requested.\n"
+            "- Focus first on understanding the user's feelings before giving advice.\n"
+            "- Validate the emotion the user expresses.\n"
+            "- Keep answers short (3–5 sentences).\n"
+            "- Ask one gentle follow-up question to encourage reflection.\n"
+            "- Do not include labels like 'Assistant:', 'Response', 'AI:', or 'Aither:'.\n"
+            "- Output only the assistant's reply.\n"
+            "- Do not give more than 5 suggestions at once.\n"
+            "- Prefer short paragraphs over lists.\n"
+            "-If you feel like it is necessary add some emojis based on the mood of the user which can cheer them up\n"
         )
 
     def _format_context(self, user_message: str) -> str:
@@ -110,7 +116,7 @@ class AitherBrain:
         return (
             f"<|system|>\n{system.strip()}\n"
             f"<|user|>\n{content_user}\n"
-            f"<|assistant|>\n"
+            f"<|assistant|>"
         )
 
     def _clean_reply(self, text: str) -> str:
@@ -178,12 +184,12 @@ class AitherBrain:
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
-                max_new_tokens=180,
+                max_new_tokens=256,
                 do_sample=True,
-                temperature=0.7,
+                temperature=0.55,
                 top_p=0.9,
                 repetition_penalty=1.12,
-                no_repeat_ngram_size=3,  # helps reduce looping / transcript continuation
+                no_repeat_ngram_size=4,  # helps reduce looping / transcript continuation
                 pad_token_id=self.tokenizer.eos_token_id,
                 eos_token_id=self.tokenizer.eos_token_id,
             )
@@ -197,6 +203,11 @@ class AitherBrain:
         return cleaned or "I’m here with you. What’s been on your mind lately?"
 
     def respond(self, user_message: str) -> str:
+        # TEMP FIX: avoid cross-turn / cross-session contamination
+        try:
+            self.memory.messages = []
+        except Exception:
+            pass
         # 1) safety check
         assessment = self.safety.detect_crisis(user_message)
         if getattr(assessment, "riskLevel", None) in (RiskAssessment.CRITICAL, RiskAssessment.URGENT):
