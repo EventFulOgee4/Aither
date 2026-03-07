@@ -1,7 +1,7 @@
 import React from "react";
 import "./topbar.css";
 
-export default function Topbar({ onNewChat }) {
+export default function Topbar() {
   return (
     <div className="topbar">
       <div className="left-pill">
@@ -24,7 +24,7 @@ export default function Topbar({ onNewChat }) {
       </div>
 
       <div className="right-actions">
-        <div className="pill search">
+        <button className="pill search" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
             <path
               d="M21 21l-4.35-4.35"
@@ -42,11 +42,6 @@ export default function Topbar({ onNewChat }) {
             />
           </svg>
           <span>Search</span>
-        </div>
-
-        {/* 🔥 THIS IS THE FIX */}
-        <button className="pill new" onClick={onNewChat} type="button">
-          + New Chat
         </button>
       </div>
     </div>

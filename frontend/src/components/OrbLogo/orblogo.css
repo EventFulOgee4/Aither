@@ -1,18 +1,109 @@
 .orb-wrap {
   display: flex;
   justify-content: center;
-  margin-top: 36px;
+  margin-top: 28px;
+  transition: all 0.35s ease;
 }
+
+.orb-wrap.compact {
+  margin-top: 8px;
+}
+
 .orb {
   width: 140px;
   height: 140px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle at 30% 20%,
-    #e9e6f6,
-    #bfaaff 35%,
-    #7c6adf 80%
-  );
-  box-shadow: 0 0 80px 26px rgba(204, 190, 255, 0.12),
-    inset 0 -18px 40px rgba(0, 0, 0, 0.12);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.95), rgba(223,212,255,0.95) 20%, rgba(181,156,255,0.95) 42%, rgba(111,88,219,0.98) 78%),
+    linear-gradient(135deg, #cdbdff, #7562e8);
+  box-shadow:
+    0 0 120px rgba(167, 141, 255, 0.22),
+    0 0 60px rgba(123, 98, 232, 0.18),
+    inset 0 -24px 40px rgba(25, 14, 55, 0.25),
+    inset 0 8px 24px rgba(255, 255, 255, 0.2);
+  animation:
+    orbFloat 6s ease-in-out infinite,
+    orbPulse 4.5s ease-in-out infinite,
+    orbHue 12s ease-in-out infinite;
+  position: relative;
+  transition: transform 0.3s ease, width 0.3s ease, height 0.3s ease;
+}
+
+.orb-wrap.compact .orb {
+  width: 108px;
+  height: 108px;
+}
+
+.orb::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(176, 154, 255, 0.18), transparent 65%);
+  filter: blur(12px);
+  z-index: -1;
+}
+
+.orb::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  left: 22%;
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.85), rgba(255,255,255,0.08));
+  filter: blur(6px);
+}
+
+.orb-sending {
+  animation:
+    orbSendPulse 1.2s ease-in-out infinite,
+    orbHue 8s ease-in-out infinite;
+}
+
+@keyframes orbFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes orbPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 120px rgba(167, 141, 255, 0.22),
+      0 0 60px rgba(123, 98, 232, 0.18),
+      inset 0 -24px 40px rgba(25, 14, 55, 0.25),
+      inset 0 8px 24px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 140px rgba(179, 158, 255, 0.3),
+      0 0 70px rgba(123, 98, 232, 0.24),
+      inset 0 -24px 40px rgba(25, 14, 55, 0.2),
+      inset 0 8px 24px rgba(255, 255, 255, 0.24);
+  }
+}
+
+@keyframes orbSendPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: saturate(1);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: saturate(1.15);
+  }
+}
+
+@keyframes orbHue {
+  0%, 100% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(8deg);
+  }
 }

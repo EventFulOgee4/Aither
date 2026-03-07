@@ -14,8 +14,11 @@ export default function SessionsList({ sessions, activeId, onSelect }) {
             onClick={() => onSelect?.(s.id)}
             type="button"
           >
-            <div className="session-name">{s.title || "New Session"}</div>
-            <div className="session-meta">#{s.id}</div>
+            <div className="session-main">
+              <div className="session-name">{s.title || "New Session"}</div>
+              <div className="session-meta">#{s.id}</div>
+            </div>
+            <div className="session-shine" />
           </button>
         ))}
 
