@@ -117,67 +117,76 @@ export default function Home() {
   }
 
   async function handleSend(prefilledText) {
-    const text = (prefilledText ?? input).trim();
-    if (!text || sending) return;
+  const text = (prefilledText ?? input).trim();
+  if (!text || sending) return;
 
-    setSending(true);
+  setSending(true);
 
-    const tempUser = {
-      id: `temp-${Date.now()}`,
-      role: "user",
-      content: text,
-    };
+  const tempUser = {
+    id: `temp-${Date.now()}`,
+    role: "user",
+    content: text,
+  };
 
-    try {
-      setMessages((prev) => [...prev, tempUser]);
-      setInput("");
+  try {
+    setMessages((prev) => [...prev, tempUser]);
+    setInput("");
 
-      const res = await sendMessage(text, activeSessionId || undefined);
+    let sessionId = activeSessionId;
 
-      const realUserMsg = res.user_message
-        ? {
-            id: res.user_message.id,
-            role: res.user_message.sender === "ai" ? "assistant" : "user",
-            content: res.user_message.message,
-            emotion: res.user_message.emotion ?? null,
-            confidence: res.user_message.confidence ?? null,
-            timestamp: res.user_message.timestamp ?? null,
-          }
-        : null;
-
-      const aiMsg = res.ai_message
-        ? {
-            id: res.ai_message.id,
-            role: res.ai_message.sender === "ai" ? "assistant" : "user",
-            content: res.ai_message.message,
-            emotion: res.ai_message.emotion ?? null,
-            confidence: res.ai_message.confidence ?? null,
-            timestamp: res.ai_message.timestamp ?? null,
-          }
-        : null;
-
-      const returnedSessionId = res.session?.id ?? activeSessionId ?? null;
-      setActiveSessionId(returnedSessionId);
-
-      setMessages((prev) => {
-        const withoutTemp = prev.filter((m) => m.id !== tempUser.id);
-        const next = [...withoutTemp];
-
-        if (realUserMsg) next.push(realUserMsg);
-        if (aiMsg) next.push(aiMsg);
-
-        return next;
-      });
-
-      await refreshSessions(false);
-    } catch (e) {
-      console.error(e);
-      setMessages((prev) => prev.filter((m) => m.id !== tempUser.id));
-      alert("Send failed. Check login token and backend.");
-    } finally {
-      setSending(false);
+    // Create a new session automatically if none is selected
+    if (!sessionId) {
+      const newSession = await createSession("New Session");
+      sessionId = newSession.id;
+      setActiveSessionId(sessionId);
     }
+
+    const res = await sendMessage(text, sessionId);
+
+    const realUserMsg = res.user_message
+      ? {
+          id: res.user_message.id,
+          role: res.user_message.sender === "ai" ? "assistant" : "user",
+          content: res.user_message.message,
+          emotion: res.user_message.emotion ?? null,
+          confidence: res.user_message.confidence ?? null,
+          timestamp: res.user_message.timestamp ?? null,
+        }
+      : null;
+
+    const aiMsg = res.ai_message
+      ? {
+          id: res.ai_message.id,
+          role: res.ai_message.sender === "ai" ? "assistant" : "user",
+          content: res.ai_message.message,
+          emotion: res.ai_message.emotion ?? null,
+          confidence: res.ai_message.confidence ?? null,
+          timestamp: res.ai_message.timestamp ?? null,
+        }
+      : null;
+
+    const returnedSessionId = res.session?.id ?? sessionId ?? null;
+    setActiveSessionId(returnedSessionId);
+
+    setMessages((prev) => {
+      const withoutTemp = prev.filter((m) => m.id !== tempUser.id);
+      const next = [...withoutTemp];
+
+      if (realUserMsg) next.push(realUserMsg);
+      if (aiMsg) next.push(aiMsg);
+
+      return next;
+    });
+
+    await refreshSessions(false);
+  } catch (e) {
+    console.error(e);
+    setMessages((prev) => prev.filter((m) => m.id !== tempUser.id));
+    alert("Send failed. Check login token and backend.");
+  } finally {
+    setSending(false);
   }
+}
 
   const hasMessages = messages.length > 0;
 
