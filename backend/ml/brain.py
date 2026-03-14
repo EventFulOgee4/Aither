@@ -196,7 +196,7 @@ class AitherBrain:
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
-                max_new_tokens=140,
+                max_new_tokens=270,
                 min_new_tokens=24,
                 do_sample=True,
                 temperature=0.65,
