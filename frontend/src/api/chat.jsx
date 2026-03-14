@@ -41,6 +41,10 @@ export async function getMessages(sessionId) {
 }
 
 export async function sendMessage(text, sessionId) {
+  if (!sessionId) {
+    throw new Error("sendMessage called without a sessionId");
+  }
+
   const res = await api.post("/chat/messages/", {
     session: sessionId,
     message: text,
