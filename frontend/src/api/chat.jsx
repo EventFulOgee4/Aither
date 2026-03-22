@@ -27,10 +27,6 @@ export async function createSession(title = "New Session") {
   return res.data;
 }
 
-export async function deleteSession(sessionId) {
-  await api.delete(`/chat/sessions/${sessionId}/`);
-}
-
 export async function getMessages(sessionId) {
   const res = await api.get("/chat/messages/", {
     params: { session: sessionId },
@@ -41,18 +37,39 @@ export async function getMessages(sessionId) {
 }
 
 export async function sendMessage(text, sessionId) {
-  if (!sessionId) {
-    throw new Error("sendMessage called without a sessionId");
-  }
-
+  // Backend expects: { session: <id>, message: <text> }
   const res = await api.post("/chat/messages/", {
     session: sessionId,
     message: text,
+    sender: "user", // REQUIRED after serializer fix
   });
 
+  // Your backend create() returns:
+  // { user_message: {...}, ai_message: {...} }
+  // We’ll also return a session object so Home.jsx can do res.session.id
+  // If your backend does NOT return session in the response, we add it.
+  const userMsg = toUIMsg(res.data);
+
+   // Fake AI response (for demo)
+  const fakeReplies = [
+  "I understand. Tell me more about that.",
+  "That sounds difficult. How long have you felt this way?",
+  "I'm here for you. What’s been on your mind?",
+  "That’s really important. Can you expand on that?",
+];
+
+const aiMsg = {
+  id: Date.now(),
+  role: "assistant",
+  content: fakeReplies[Math.floor(Math.random() * fakeReplies.length)],
+  timestamp: new Date().toISOString(),
+};
+
   return {
-    session: res.data.session ?? { id: sessionId },
-    user_message: res.data.user_message,
-    ai_message: res.data.ai_message,
+    session: { id: sessionId },
+    //user_message: res.data.user_message,
+    //ai_message: res.data.ai_message,
+    user_message: userMsg,
+    ai_message: aiMsg,
   };
 }
