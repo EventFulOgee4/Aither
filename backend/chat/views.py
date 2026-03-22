@@ -1,4 +1,5 @@
 import time
+import requests
 from functools import lru_cache
 
 from django.utils import timezone
@@ -15,6 +16,10 @@ from .models import TherapySession, ChatMessage, MoodEntry, AIInteraction
 from .serializers import TherapySessionSerializer, ChatMessageSerializer, MoodEntrySerializer
 
 
+# ----------------------------
+# ML Engine (load once per process)
+# ----------------------------
+
 @lru_cache(maxsize=1)
 def get_engine():
     """
@@ -22,6 +27,7 @@ def get_engine():
 
     Prefer loader (real model integration). Fall back to AitherBrain if present.
     """
+    # Style 1: Loader-style model dict (recommended long term)
     try:
         from ml.loader import get_model
         models = get_model()
@@ -33,6 +39,7 @@ def get_engine():
     except Exception as e:
         print("⚠️ ml.loader.get_model not available:", repr(e))
 
+    # Style 2: Your current brain class (backward compatible)
     try:
         from ml.brain import AitherBrain
         brain = AitherBrain()
@@ -41,6 +48,7 @@ def get_engine():
     except Exception as e:
         print("⚠️ AitherBrain not available:", repr(e))
 
+    # Nothing available
     print("❌ ML engine: none (will use fallback)")
     return {"mode": "none"}
 
@@ -56,16 +64,11 @@ def generate_ai_response(user_text: str, history=None) -> tuple[str, str]:
     engine = get_engine()
     mode = engine.get("mode")
     print("ENGINE MODE:", mode)
-    print("USER TEXT:", user_text)
 
     if mode == "brain":
         brain = engine["brain"]
         try:
-            try:
-                ai_text = brain.respond(user_text, history=history)
-            except TypeError:
-                ai_text = brain.respond(user_text)
-
+            ai_text = brain.respond(user_text)
             return ai_text, "aither-brain"
         except Exception as e:
             print("⚠️ brain.respond failed:", repr(e))
@@ -78,6 +81,7 @@ def generate_ai_response(user_text: str, history=None) -> tuple[str, str]:
             print("⚠️ loader returned non-dict:", type(models))
             return fallback_ai_response(user_text), "fallback"
 
+        # Optional safety check if your loader provides it
         safety = models.get("safety")
         if safety is not None:
             try:
@@ -92,15 +96,16 @@ def generate_ai_response(user_text: str, history=None) -> tuple[str, str]:
             print("⚠️ loader models has no 'rag' (or it's None). Keys:", list(models.keys()))
             return fallback_ai_response(user_text), "fallback"
 
+        # Try calling your model with history if supported
         try:
             if history is not None:
                 ai_text = rag.generate(user_text, history=history)
             else:
                 ai_text = rag.generate(user_text)
-
             return ai_text, "aither-model"
 
         except TypeError:
+            # If rag.generate doesn't accept history, call without it
             try:
                 ai_text = rag.generate(user_text)
                 return ai_text, "aither-model"
@@ -112,7 +117,6 @@ def generate_ai_response(user_text: str, history=None) -> tuple[str, str]:
             print("⚠️ rag.generate failed:", repr(e))
             return fallback_ai_response(user_text), "fallback"
 
-    print("⚠️ No valid engine mode, using fallback")
     return fallback_ai_response(user_text), "fallback"
 
 
@@ -121,16 +125,10 @@ class TherapySessionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        queryset = (
-            TherapySession.objects
-            .filter(user=self.request.user)
-            .order_by("-last_activity", "-created_at", "-id")
-        )
-
+        queryset = TherapySession.objects.filter(user=self.request.user)
         title = self.request.query_params.get("title")
         if title:
             queryset = queryset.filter(title__icontains=title)
-
         return queryset
 
     def perform_create(self, serializer):
@@ -142,11 +140,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = (
-            ChatMessage.objects
-            .filter(session__user=self.request.user)
-            .order_by("timestamp", "id")
-        )
+        queryset = ChatMessage.objects.filter(session__user=self.request.user)
 
         session_id = self.request.query_params.get("session")
         if session_id:
@@ -161,25 +155,26 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         session = serializer.validated_data["session"]
 
+        # Ownership check
         if session.user != self.request.user:
             raise PermissionDenied("Not your session")
 
+        # Save user message
         self.user_message = serializer.save(sender="user")
 
+        # Build last ~10 messages as history (oldest -> newest)
         history_qs = (
             ChatMessage.objects
             .filter(session=session)
-            .order_by("-timestamp", "-id")
+            .order_by("-timestamp")
             .values("sender", "message")[:10]
         )
         history = list(history_qs)[::-1]
 
+        # Generate AI response
         start = time.time()
         try:
-            ai_text, model_name = generate_ai_response(
-                self.user_message.message,
-                history=history
-            )
+            ai_text, model_name = generate_ai_response(self.user_message.message, history=history)
         except Exception as e:
             print("⚠️ generate_ai_response failed:", repr(e))
             ai_text = fallback_ai_response(self.user_message.message)
@@ -187,18 +182,21 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
         latency_ms = int((time.time() - start) * 1000)
 
+        # Save AI message
         self.ai_message = ChatMessage.objects.create(
             session=session,
             sender="ai",
             message=ai_text
         )
 
+        # Update session metadata
         session.last_activity = timezone.now()
         if session.message_count is None:
             session.message_count = 0
-        session.message_count += 2
+        session.message_count += 2  # user + ai
         session.save(update_fields=["last_activity", "message_count"])
 
+        # Log interaction
         AIInteraction.objects.create(
             session=session,
             model_name=model_name,
@@ -215,13 +213,60 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
         return Response(
             {
-                "session": TherapySessionSerializer(self.user_message.session).data,
                 "user_message": ChatMessageSerializer(self.user_message).data,
                 "ai_message": ChatMessageSerializer(self.ai_message).data,
             },
             status=201,
         )
 
+#ADDED
+MODEL_URL = "http://127.0.0.1:8001/analyze"  # your FastAPI
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_message(request):
+    user = request.user
+    session_id = request.data.get("session_id")
+    message = request.data.get("message")
+
+    session = TherapySession.objects.get(id=session_id, user=user)
+
+    # 1. Save user message
+    user_msg = ChatMessage.objects.create(
+        session=session,
+        sender="user",
+        message=message
+    )
+
+    # 2. Call AI model
+    start = time.time()
+    res = requests.post(MODEL_URL, json={"text": message})
+    latency = int((time.time() - start) * 1000)
+
+    ai_data = res.json()
+    ai_text = ai_data.get("response", "No response")
+
+    # 3. Save AI response
+    ai_msg = ChatMessage.objects.create(
+        session=session,
+        sender="ai",
+        message=ai_text
+    )
+
+    # 4. Save AI interaction
+    AIInteraction.objects.create(
+        session=session,
+        model_name="emotion-model",
+        prompt=message,
+        response=ai_text,
+        latency_ms=latency
+    )
+
+    return Response({
+        "user_message": user_msg.message,
+        "ai_message": ai_msg.message,
+        "latency_ms": latency
+    })
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
