@@ -117,6 +117,11 @@ export async function ensureFreshAccessToken() {
 
   if (!refresh) return null;
 
+  // If access token is valid, return it (ADDED PROACTIVE CHECK)
+  if (access && !isExpired(access)) {
+    return access; // still valid
+  }
+
   try {
     const res = await axios.post(`${BASE_URL}/token/refresh/`, { refresh });
     const newAccess = res.data.access;
