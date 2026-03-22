@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import TherapySession, ChatMessage, MoodEntry
-from django.contrib.auth.models import User
+#from django.contrib.auth.models import User
 
 class TherapySessionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,7 +11,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
         fields = ['id', 'session', 'sender', 'message', 'timestamp']
-        read_only_fields = ['sender', 'timestamp']
+        read_only_fields = ['timestamp']
 
 class MoodEntrySerializer(serializers.ModelSerializer):
     class Meta:
