@@ -5,6 +5,7 @@ from .views import (
     ChatMessageViewSet,
     MoodEntryViewSet,
     session_metadata,
+    send_message
 )
 
 urlpatterns = [
