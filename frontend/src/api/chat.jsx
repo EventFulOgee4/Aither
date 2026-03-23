@@ -31,44 +31,58 @@ export async function getMessages(sessionId) {
   const res = await api.get("/chat/messages/", {
     params: { session: sessionId },
   });
-
   const list = unwrapList(res.data);
   return list.map(toUIMsg);
 }
 
 export async function sendMessage(text, sessionId) {
-  // Backend expects: { session: <id>, message: <text> }
   const res = await api.post("/chat/messages/", {
     session: sessionId,
     message: text,
-    sender: "user", // REQUIRED after serializer fix
+    sender: "user",
   });
 
-  // Your backend create() returns:
-  // { user_message: {...}, ai_message: {...} }
-  // We’ll also return a session object so Home.jsx can do res.session.id
-  // If your backend does NOT return session in the response, we add it.
-  const userMsg = toUIMsg(res.data);
+  // ✅ THE FIX: backend returns { user_message: {...}, ai_message: {...} }
+  // so we must read res.data.user_message, NOT res.data directly
+  const rawUser = res.data.user_message ?? res.data;
 
-   // Fake AI response (for demo)
+  const userMsg = {
+    id: rawUser.id,
+    role: "user",
+    content: rawUser.message ?? rawUser.content,
+    emotion: rawUser.emotion ?? null,
+    confidence: rawUser.confidence ?? null,
+    timestamp: rawUser.timestamp ?? null,
+  };
+
+  // Use real AI message from backend if available, otherwise fake it
+  const rawAi = res.data.ai_message;
+
   const fakeReplies = [
-  "I understand. Tell me more about that.",
-  "That sounds difficult. How long have you felt this way?",
-  "I'm here for you. What’s been on your mind?",
-  "That’s really important. Can you expand on that?",
-];
+    "I understand. Tell me more about that.",
+    "That sounds difficult. How long have you felt this way?",
+    "I'm here for you. What's been on your mind?",
+    "That's really important. Can you expand on that?",
+  ];
 
-const aiMsg = {
-  id: Date.now(),
-  role: "assistant",
-  content: fakeReplies[Math.floor(Math.random() * fakeReplies.length)],
-  timestamp: new Date().toISOString(),
-};
+  const aiMsg = rawAi
+    ? {
+        id: rawAi.id ?? `ai-${Date.now()}`,
+        role: "assistant",
+        content: rawAi.message ?? rawAi.content,
+        emotion: rawAi.emotion ?? null,
+        confidence: rawAi.confidence ?? null,
+        timestamp: rawAi.timestamp ?? null,
+      }
+    : {
+        id: `ai-${Date.now()}`,
+        role: "assistant",
+        content: fakeReplies[Math.floor(Math.random() * fakeReplies.length)],
+        timestamp: new Date().toISOString(),
+      };
 
   return {
     session: { id: sessionId },
-    //user_message: res.data.user_message,
-    //ai_message: res.data.ai_message,
     user_message: userMsg,
     ai_message: aiMsg,
   };
