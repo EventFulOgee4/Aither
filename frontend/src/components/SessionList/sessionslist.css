@@ -1,126 +1,132 @@
+/* sessionslist.css */
+
 .sessions-wrap {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
-.sessions-title {
-  font-size: 12px;
+.sessions-section-label {
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(229, 220, 255, 0.65);
-  margin: 10px 2px 12px;
-  z-index: 1;
-}
-
-.sessions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 8px;
+  color: rgba(185, 178, 214, 0.4);
+  padding: 8px 6px 6px;
 }
 
 .session-item {
   position: relative;
   width: 100%;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.035),
-    rgba(255, 255, 255, 0.02)
-  );
-  border-radius: 14px;
-  padding: 12px 12px 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
   text-align: left;
   cursor: pointer;
-  color: #f0eaff;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+  color: var(--text-soft);
   transition:
-    transform 0.22s ease,
-    border-color 0.22s ease,
-    background 0.22s ease,
-    box-shadow 0.22s ease;
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s var(--ease-spring);
 }
 
 .session-item:hover {
-  transform: translateY(-2px);
-  border-color: rgba(155, 143, 230, 0.24);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.055),
-    rgba(255, 255, 255, 0.03)
-  );
-  box-shadow: 0 12px 28px rgba(88, 73, 160, 0.18);
+  background: var(--surface-2);
+  border-color: var(--border);
 }
 
 .session-item:active {
-  transform: scale(0.985);
+  transform: scale(0.98);
 }
 
 .session-item.active {
-  border-color: rgba(169, 151, 255, 0.38);
-  background: linear-gradient(
-    135deg,
-    rgba(114, 93, 218, 0.22),
-    rgba(74, 59, 145, 0.16)
-  );
-  box-shadow:
-    0 14px 30px rgba(93, 78, 170, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(120, 96, 218, 0.2), rgba(80, 62, 160, 0.14));
+  border-color: rgba(157, 135, 245, 0.3);
 }
 
 .session-item.active .session-name {
-  color: #ffffff;
+  color: #fff;
 }
 
 .session-main {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(157, 135, 245, 0.4);
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.session-item.active .session-dot {
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(157, 135, 245, 0.5);
+}
+
+.session-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .session-name {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 500;
   line-height: 1.3;
-  color: rgba(244, 239, 255, 0.95);
-  margin-bottom: 4px;
-  transition: color 0.2s ease;
+  color: rgba(236, 232, 248, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.18s ease;
 }
 
 .session-meta {
   font-size: 11px;
-  color: rgba(204, 194, 236, 0.52);
-  letter-spacing: 0.02em;
+  color: rgba(185, 178, 214, 0.38);
+  margin-top: 2px;
+  letter-spacing: 0.01em;
 }
 
+/* Hover shimmer */
 .session-shine {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    110deg,
+    100deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.06) 45%,
+    rgba(255, 255, 255, 0.04) 45%,
     transparent 70%
   );
-  transform: translateX(-140%);
-  transition: transform 0.7s ease;
+  transform: translateX(-120%);
+  transition: transform 0.65s ease;
   pointer-events: none;
 }
 
 .session-item:hover .session-shine {
-  transform: translateX(140%);
+  transform: translateX(120%);
 }
 
 .sessions-empty {
-  border-radius: 14px;
-  padding: 14px 12px;
-  color: rgba(210, 199, 243, 0.56);
+  border-radius: var(--radius-md);
+  padding: 22px 14px;
+  color: rgba(185, 178, 214, 0.38);
   font-size: 13px;
   text-align: center;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.015);
+  line-height: 1.5;
+}
+
+.sessions-empty-icon {
+  display: block;
+  margin: 0 auto 8px;
+  opacity: 0.35;
 }
