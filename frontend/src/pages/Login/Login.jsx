@@ -17,8 +17,8 @@ export default function LoginPage() {
     try {
       await login(username.trim(), password);
       nav("/");
-    } catch (e2) {
-      setErr("Login failed. Check username/password.");
+    } catch {
+      setErr("Login failed. Check your username and password.");
     } finally {
       setLoading(false);
     }
@@ -26,30 +26,60 @@ export default function LoginPage() {
 
   return (
     <div className="login-root">
+      <div className="login-orb-bg" />
+
       <div className="login-card">
-        <h2>Aither Login</h2>
+        <div className="login-header">
+          <div className="login-orb" />
+          <div>
+            <div className="login-logo-text">Aither</div>
+            <div className="login-tagline">Your reflective companion</div>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="login-form">
-          <input
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoFocus
-          />
-          <input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+          <div className="login-field">
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoFocus
+              autoComplete="username"
+            />
+          </div>
+
+          <div className="login-field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              placeholder="Enter your password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+
+          <button className="login-submit" type="submit" disabled={loading}>
+            {loading ? "Signing in…" : "Continue"}
           </button>
         </form>
 
-        {err && <div className="login-error">{err}</div>}
+        {err && (
+          <div className="login-error">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="M12 8v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="12" cy="16" r="1" fill="currentColor"/>
+            </svg>
+            {err}
+          </div>
+        )}
 
         <div className="login-hint">
-          Use the Django superuser you created (ex: <code>aither</code>).
+          Use your Django superuser — e.g. <code>aither</code>
         </div>
       </div>
     </div>
