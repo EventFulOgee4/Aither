@@ -13,3 +13,19 @@ __pycache__/
 
 # Database
 *.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+
+# Env
+.env
+
+# Node
+node_modules/
+
+# Huggingface cache
+.cache/
+
