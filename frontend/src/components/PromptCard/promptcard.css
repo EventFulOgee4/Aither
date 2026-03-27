@@ -1,208 +1,188 @@
+/* promptcard.css */
+
 .prompt-wrap {
   display: flex;
   justify-content: center;
-  margin-top: 22px;
+  padding: 0 16px 8px;
   width: 100%;
-  z-index: 1;
+  z-index: 2;
+  position: relative;
 }
 
 .prompt-card {
-  width: 720px;
-  max-width: 88vw;
-  background: rgba(235, 229, 247, 0.92);
-  border-radius: 24px;
-  padding: 18px;
+  width: min(760px, 100%);
+  background: rgba(18, 14, 28, 0.8);
+  border-radius: var(--radius-xl);
+  padding: 16px;
   box-shadow:
-    0 20px 60px rgba(92, 76, 158, 0.18),
-    0 8px 24px rgba(0, 0, 0, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  position: relative;
-  backdrop-filter: blur(20px);
+    var(--shadow-lg),
+    0 0 0 1px var(--border),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px);
   transition:
-    transform 0.25s ease,
     box-shadow 0.25s ease,
-    border-color 0.25s ease;
-  animation: fadeCardIn 0.6s ease;
-}
-
-.prompt-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 24px 72px rgba(115, 97, 196, 0.2),
-    0 10px 28px rgba(0, 0, 0, 0.16);
+    transform 0.25s var(--ease-spring);
+  animation: promptCardIn 0.5s var(--ease) both;
 }
 
 .prompt-card:focus-within {
-  transform: translateY(-3px);
   box-shadow:
-    0 26px 78px rgba(115, 97, 196, 0.24),
-    0 10px 28px rgba(0, 0, 0, 0.16);
-  border-color: rgba(156, 136, 245, 0.5);
+    var(--shadow-lg),
+    0 0 0 1px rgba(157, 135, 245, 0.4),
+    0 0 40px rgba(120, 96, 220, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.prompt-card::after {
-  content: "";
-  position: absolute;
-  inset: -12px;
-  border-radius: 30px;
-  filter: blur(32px);
-  background: linear-gradient(
-    90deg,
-    rgba(204, 190, 255, 0.1),
-    rgba(164, 148, 255, 0.06),
-    rgba(200, 220, 255, 0.04)
-  );
-  z-index: -1;
-  animation: softPulse 6s ease-in-out infinite;
-}
-
-.input-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.input-row input {
-  flex: 1;
-  border-radius: 16px;
-  padding: 15px 16px;
-  border: 1px solid rgba(116, 99, 176, 0.08);
+/* Textarea */
+.prompt-textarea {
+  width: 100%;
+  border: none;
   outline: none;
-  font-size: 16px;
-  background: rgba(255, 255, 255, 0.68);
-  color: #2a2436;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease,
-    transform 0.2s ease;
-}
-
-.input-row input::placeholder {
-  color: #7a7486;
-}
-
-.input-row input:focus {
-  border-color: rgba(133, 114, 219, 0.55);
-  box-shadow: 0 0 0 4px rgba(147, 126, 235, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  transform: translateY(-1px);
-}
-
-.mic {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
   background: transparent;
-  border: 0;
-  color: #7b7490;
-  cursor: pointer;
-  border-radius: 12px;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  resize: none;
+  min-height: 44px;
+  max-height: 200px;
+  padding: 4px 8px 4px 4px;
+  overflow-y: auto;
 }
 
-.mic:hover {
-  background: rgba(122, 104, 201, 0.08);
-  color: #6659b8;
-  transform: translateY(-1px) scale(1.04);
+.prompt-textarea::placeholder {
+  color: rgba(185, 178, 214, 0.38);
 }
 
-.mic:active {
-  transform: scale(0.96);
+.prompt-textarea::-webkit-scrollbar { width: 4px; }
+.prompt-textarea::-webkit-scrollbar-thumb {
+  background: rgba(157, 135, 245, 0.15);
+  border-radius: 4px;
 }
 
-.controls-row {
+/* Bottom row */
+.prompt-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 14px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.left-controls {
+.prompt-left-tools {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 4px;
 }
 
-.small {
-  padding: 8px 13px;
-  border-radius: 12px;
-  border: 1px solid rgba(120, 101, 187, 0.08);
-  background: rgba(255, 255, 255, 0.74);
-  color: #2f2940;
-  font-weight: 600;
+.prompt-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
   cursor: pointer;
   transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
 }
 
-.small:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(129, 109, 214, 0.18);
-  box-shadow: 0 6px 18px rgba(117, 99, 198, 0.12);
+.prompt-tool-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-soft);
+  border-color: var(--border);
 }
 
-.small:active {
-  transform: scale(0.97);
+.prompt-right-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.send {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #ad95ff, #7b64ea);
-  border-radius: 14px;
+.prompt-char-count {
+  font-size: 11.5px;
+  color: rgba(185, 178, 214, 0.3);
+  letter-spacing: 0.02em;
+  transition: color 0.2s ease;
+}
+
+.prompt-char-count.warning {
+  color: rgba(255, 180, 100, 0.7);
+}
+
+/* Mic button */
+.prompt-mic {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s var(--ease-spring);
+}
+
+.prompt-mic:hover {
+  background: var(--surface-2);
+  color: var(--text-soft);
+  transform: scale(1.06);
+}
+
+/* Send button */
+.prompt-send {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #b8a0ff, #7b64ea);
+  border-radius: var(--radius-md);
   border: 0;
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(115, 92, 219, 0.28);
+  box-shadow: 0 6px 18px rgba(115, 92, 219, 0.32);
   transition:
-    transform 0.2s ease,
+    transform 0.2s var(--ease-spring),
     box-shadow 0.2s ease,
     filter 0.2s ease;
+  flex-shrink: 0;
 }
 
-.send:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 12px 26px rgba(115, 92, 219, 0.34);
-  filter: brightness(1.03);
+.prompt-send:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 10px 24px rgba(115, 92, 219, 0.42);
+  filter: brightness(1.06);
 }
 
-.send:active:not(:disabled) {
-  transform: scale(0.95);
+.prompt-send:active:not(:disabled) {
+  transform: scale(0.93);
 }
 
-.send:disabled,
-.is-disabled .send {
-  opacity: 0.6;
+.prompt-send:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-@keyframes softPulse {
-  0%, 100% {
-    opacity: 0.9;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.01);
-  }
-}
-
-@keyframes fadeCardIn {
-  0% {
+@keyframes promptCardIn {
+  from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
-  100% {
+  to {
     opacity: 1;
     transform: translateY(0);
   }
