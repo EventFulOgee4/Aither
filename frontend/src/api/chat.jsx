@@ -27,6 +27,10 @@ export async function createSession(title = "New Session") {
   return res.data;
 }
 
+export async function deleteSession(sessionId) {
+  await api.delete(`/chat/sessions/${sessionId}/`);
+}
+
 export async function getMessages(sessionId) {
   const res = await api.get("/chat/messages/", {
     params: { session: sessionId },
