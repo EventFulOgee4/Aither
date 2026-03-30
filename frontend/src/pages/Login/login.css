@@ -13,7 +13,6 @@
   overflow: hidden;
 }
 
-/* Grain overlay */
 .login-root::before {
   content: '';
   position: fixed;
@@ -47,9 +46,7 @@
   position: relative;
   z-index: 1;
   backdrop-filter: blur(24px);
-  box-shadow:
-    var(--shadow-lg),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   animation: loginCardIn 0.6s var(--ease) both;
 }
 
@@ -70,7 +67,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
   gap: 14px;
 }
 
@@ -79,13 +76,13 @@
   height: 64px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.92), rgba(215, 200, 255, 0.9) 22%, rgba(175, 148, 255, 0.95) 45%, rgba(105, 82, 215, 0.98) 80%),
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.92), rgba(215,200,255,0.9) 22%, rgba(175,148,255,0.95) 45%, rgba(105,82,215,0.98) 80%),
     linear-gradient(135deg, #c8b8ff, #7060e0);
   box-shadow:
-    0 0 60px rgba(155, 130, 255, 0.3),
-    0 8px 24px rgba(100, 78, 210, 0.4),
-    inset 0 -12px 20px rgba(20, 10, 50, 0.25),
-    inset 0 4px 12px rgba(255, 255, 255, 0.22);
+    0 0 60px rgba(155,130,255,0.3),
+    0 8px 24px rgba(100,78,210,0.4),
+    inset 0 -12px 20px rgba(20,10,50,0.25),
+    inset 0 4px 12px rgba(255,255,255,0.22);
   animation: loginOrbFloat 5s ease-in-out infinite, loginOrbHue 10s ease-in-out infinite;
   flex-shrink: 0;
 }
@@ -97,6 +94,7 @@
   color: var(--text);
   letter-spacing: -0.03em;
   line-height: 1;
+  text-align: center;
 }
 
 .login-tagline {
@@ -104,8 +102,44 @@
   color: var(--muted);
   letter-spacing: 0.04em;
   margin-top: 2px;
+  text-align: center;
 }
 
+/* ── Mode tabs ── */
+.login-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.login-tab {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: calc(var(--radius-md) - 2px);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.login-tab.active {
+  background: rgba(157, 135, 245, 0.18);
+  color: var(--lavender);
+}
+
+.login-tab:hover:not(.active) {
+  color: var(--text-soft);
+}
+
+/* ── Form ── */
 .login-form {
   display: flex;
   flex-direction: column;
@@ -116,6 +150,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  animation: loginFieldIn 0.25s var(--ease) both;
+}
+
+@keyframes loginFieldIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .login-field label {
@@ -135,10 +175,7 @@
   font-family: var(--font-body);
   font-size: 15px;
   outline: none;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .login-field input::placeholder {
@@ -164,10 +201,7 @@
   letter-spacing: 0.01em;
   cursor: pointer;
   box-shadow: var(--shadow-accent);
-  transition:
-    transform 0.2s var(--ease-spring),
-    box-shadow 0.2s ease,
-    filter 0.2s ease;
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease, filter 0.2s ease;
   position: relative;
   overflow: hidden;
 }
@@ -186,33 +220,10 @@
   filter: brightness(1.04);
 }
 
-.login-submit:active:not(:disabled) {
-  transform: scale(0.98);
-}
+.login-submit:active:not(:disabled) { transform: scale(0.98); }
+.login-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.login-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.login-divider {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 20px 0 4px;
-  color: rgba(185, 178, 214, 0.3);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-}
-
-.login-divider::before,
-.login-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
+/* ── Error ── */
 .login-error {
   display: flex;
   align-items: center;
@@ -227,56 +238,51 @@
   animation: shakeError 0.4s ease;
 }
 
+/* ── Hint ── */
 .login-hint {
   margin-top: 18px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  background: rgba(157, 135, 245, 0.06);
-  border: 1px solid rgba(157, 135, 245, 0.1);
   color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: 13px;
   text-align: center;
 }
 
-.login-hint code {
+.login-hint-link {
+  background: none;
+  border: none;
   color: var(--lavender);
-  background: rgba(157, 135, 245, 0.12);
-  padding: 1px 6px;
-  border-radius: 5px;
-  font-size: 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
+.login-hint-link:hover {
+  color: var(--text);
+}
+
+/* ── Animations ── */
 @keyframes loginCardIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 @keyframes loginOrbFloat {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  50%       { transform: translateY(-6px); }
 }
-
 @keyframes loginOrbHue {
   0%, 100% { filter: hue-rotate(0deg); }
-  50% { filter: hue-rotate(12deg); }
+  50%       { filter: hue-rotate(12deg); }
 }
-
 @keyframes loginGlowPulse {
   0%, 100% { opacity: 0.8; transform: translateX(-50%) scale(1); }
-  50% { opacity: 1; transform: translateX(-50%) scale(1.06); }
+  50%       { opacity: 1;   transform: translateX(-50%) scale(1.06); }
 }
-
 @keyframes shakeError {
   0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
 }
