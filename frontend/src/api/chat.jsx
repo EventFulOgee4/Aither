@@ -1,20 +1,10 @@
 import { api } from "./client";
 
+const BASE_URL = "http://127.0.0.1:8000/api";
+
 // DRF pagination helper
 function unwrapList(data) {
   return Array.isArray(data) ? data : data?.results ?? [];
-}
-
-// Convert backend message -> UI message shape used in Home.jsx
-function toUIMsg(m) {
-  return {
-    id: m.id,
-    role: m.sender === "ai" ? "assistant" : "user",
-    content: m.message,
-    emotion: m.emotion ?? null,
-    confidence: m.confidence ?? null,
-    timestamp: m.timestamp ?? null,
-  };
 }
 
 export async function listSessions() {
@@ -36,7 +26,14 @@ export async function getMessages(sessionId) {
     params: { session: sessionId },
   });
   const list = unwrapList(res.data);
-  return list.map(toUIMsg);
+  return list.map((m) => ({
+    id: m.id,
+    role: m.sender === "ai" ? "assistant" : "user",
+    content: m.message,
+    emotion: m.emotion ?? null,
+    confidence: m.confidence ?? null,
+    timestamp: m.timestamp ?? null,
+  }));
 }
 
 export async function sendMessage(text, sessionId) {
@@ -46,9 +43,8 @@ export async function sendMessage(text, sessionId) {
     sender: "user",
   });
 
-  // ✅ THE FIX: backend returns { user_message: {...}, ai_message: {...} }
-  // so we must read res.data.user_message, NOT res.data directly
   const rawUser = res.data.user_message ?? res.data;
+  const rawAi = res.data.ai_message;
 
   const userMsg = {
     id: rawUser.id,
@@ -59,16 +55,6 @@ export async function sendMessage(text, sessionId) {
     timestamp: rawUser.timestamp ?? null,
   };
 
-  // Use real AI message from backend if available, otherwise fake it
-  const rawAi = res.data.ai_message;
-
-  const fakeReplies = [
-    "I understand. Tell me more about that.",
-    "That sounds difficult. How long have you felt this way?",
-    "I'm here for you. What's been on your mind?",
-    "That's really important. Can you expand on that?",
-  ];
-
   const aiMsg = rawAi
     ? {
         id: rawAi.id ?? `ai-${Date.now()}`,
@@ -78,16 +64,77 @@ export async function sendMessage(text, sessionId) {
         confidence: rawAi.confidence ?? null,
         timestamp: rawAi.timestamp ?? null,
       }
-    : {
-        id: `ai-${Date.now()}`,
-        role: "assistant",
-        content: fakeReplies[Math.floor(Math.random() * fakeReplies.length)],
-        timestamp: new Date().toISOString(),
-      };
+    : null;
 
   return {
-    session: { id: sessionId },
+    session: res.data.session ?? { id: sessionId },
     user_message: userMsg,
     ai_message: aiMsg,
   };
+}
+
+/**
+ * sendMessageStream — uses SSE streaming endpoint.
+ *
+ * Calls onChunk(text) for each streamed token.
+ * Calls onMeta({ session_id, session_title, user_message_id }) once at start.
+ * Calls onDone({ ai_message_id }) once at end.
+ * Returns a cancel function.
+ */
+export function sendMessageStream(text, sessionId, { onChunk, onMeta, onDone, onError }) {
+  const token = localStorage.getItem("access");
+
+  const ctrl = new AbortController();
+
+  (async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/chat/stream/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ session: sessionId, message: text }),
+        signal: ctrl.signal,
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        onError?.(new Error(`HTTP ${res.status}: ${err}`));
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); // keep incomplete line
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed.type === "meta") onMeta?.(parsed);
+            else if (parsed.type === "chunk") onChunk?.(parsed.text);
+            else if (parsed.type === "done") onDone?.(parsed);
+          } catch {
+            // ignore malformed chunks
+          }
+        }
+      }
+    } catch (e) {
+      if (e.name !== "AbortError") onError?.(e);
+    }
+  })();
+
+  return () => ctrl.abort();
 }
