@@ -168,7 +168,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   z-index: 1;
   padding-bottom: 12px;
   animation: fadeUp 0.4s var(--ease) both;
@@ -198,7 +198,7 @@
 }
 
 .message-group {
-  max-width: 78%;
+  max-width: 74%;
   display: flex;
   flex-direction: column;
 }
@@ -212,26 +212,40 @@
 }
 
 .message-bubble {
-  padding: 13px 16px;
-  border-radius: 18px;
-  white-space: pre-wrap;
+  padding: 14px 18px;
+  border-radius: 20px;
   word-break: break-word;
-  line-height: 1.6;
+  line-height: 1.65;
   font-size: 14.5px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
   animation: messagePop 0.26s var(--ease) both;
+  transition: box-shadow 0.2s ease;
 }
 
 .user-bubble {
-  background: linear-gradient(135deg, rgba(145, 122, 240, 0.26), rgba(108, 88, 214, 0.18));
-  color: var(--text);
-  border-radius: 18px 18px 6px 18px;
+  background: linear-gradient(135deg, rgba(120, 98, 218, 0.32), rgba(90, 72, 185, 0.22));
+  color: #f0ecff;
+  border-radius: 20px 20px 5px 20px;
+  border: 1px solid rgba(157, 135, 245, 0.2);
+  box-shadow:
+    0 4px 20px rgba(90, 70, 180, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 .assistant-bubble {
-  background: rgba(255, 255, 255, 0.055);
-  color: rgba(236, 232, 248, 0.92);
-  border-radius: 18px 18px 18px 6px;
+  background: linear-gradient(160deg, rgba(18, 14, 32, 0.92), rgba(14, 10, 26, 0.88));
+  color: rgba(232, 226, 252, 0.93);
+  border-radius: 20px 20px 20px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  backdrop-filter: blur(12px);
+}
+
+.assistant-bubble:hover {
+  box-shadow:
+    0 6px 28px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .message-meta {
@@ -362,3 +376,84 @@
 
   .example-card { max-width: 100%; }
 }
+/* ── Markdown rendering ── */
+.message-content p {
+  margin: 0 0 7px;
+  line-height: 1.65;
+}
+.message-content p:last-child { margin-bottom: 0; }
+.message-content p:empty { display: none; }
+
+.message-content ul,
+.message-content ol {
+  margin: 5px 0 7px;
+  padding-left: 20px;
+}
+.message-content li {
+  margin-bottom: 3px;
+  line-height: 1.58;
+}
+.message-content li:last-child { margin-bottom: 0; }
+
+.message-content strong {
+  font-weight: 600;
+  color: rgba(240, 236, 255, 1);
+}
+.message-content em {
+  font-style: italic;
+  opacity: 0.88;
+}
+.message-content code {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+  background: rgba(157, 135, 245, 0.1);
+  border: 1px solid rgba(157, 135, 245, 0.15);
+  padding: 1px 5px;
+  border-radius: 5px;
+  color: var(--lavender);
+}
+.message-content hr {
+  border: none;
+  border-top: 1px solid rgba(157, 135, 245, 0.12);
+  margin: 10px 0;
+}
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  margin: 10px 0 5px;
+  color: rgba(240, 236, 255, 0.96);
+  font-size: 1em;
+  letter-spacing: -0.01em;
+}
+
+/* ── Streaming cursor ── */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: rgba(200, 185, 255, 0.85);
+  border-radius: 1px;
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: cursorBlink 0.8s ease-in-out infinite;
+}
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.message-bubble.streaming {
+  border-color: rgba(157, 135, 245, 0.2);
+}
+
+/* ── Timestamps ── */
+.message-time {
+  font-size: 10.5px;
+  color: rgba(185, 178, 214, 0.32);
+  margin-top: 4px;
+  padding: 0 4px;
+  letter-spacing: 0.02em;
+}
+.time-right { text-align: right; }
+.time-left  { text-align: left; }
