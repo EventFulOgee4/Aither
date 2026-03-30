@@ -19,7 +19,6 @@ export default function SessionsList({ sessions, activeId, onSelect }) {
             <div className="session-dot" />
             <div className="session-text">
               <div className="session-name">{s.title || "New Session"}</div>
-              <div className="session-meta">Session #{s.id}</div>
             </div>
           </div>
           <div className="session-shine" />
