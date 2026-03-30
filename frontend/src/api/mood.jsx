@@ -1,11 +1,11 @@
 import { api } from "./client";
 
 export async function logMood(mood, intensity, note = "") {
-  const res = await api.post("/mood/", { mood, intensity, note });
+  const res = await api.post("/chat/moods/", { mood, intensity, note });
   return res.data;
 }
 
 export async function moodStats() {
-  const res = await api.get("/mood/stats/");
+  const res = await api.get("/chat/moods/");
   return res.data;
 }
