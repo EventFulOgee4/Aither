@@ -5,7 +5,7 @@ from .views import (
     ChatMessageViewSet,
     MoodEntryViewSet,
     session_metadata,
-    send_message
+    stream_message,
 )
 
 urlpatterns = [
@@ -19,8 +19,6 @@ urlpatterns = [
             'post': 'create'
         })
     ),
-
-    # 🔥 THIS IS THE IMPORTANT NEW ROUTE
     path(
         'sessions/<int:pk>/',
         TherapySessionViewSet.as_view({
@@ -36,6 +34,9 @@ urlpatterns = [
             'post': 'create'
         })
     ),
+
+    # Streaming endpoint
+    path('stream/', stream_message),
 
     # Moods
     path(
