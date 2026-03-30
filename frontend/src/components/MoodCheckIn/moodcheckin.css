@@ -1,0 +1,84 @@
+/* moodcheckin.css */
+
+.mood-checkin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-top: 6px;
+  animation: moodFadeIn 0.35s var(--ease) both;
+  max-width: 480px;
+}
+
+.mood-checkin-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+
+.mood-checkin-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mood-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s var(--ease-spring);
+  min-width: 52px;
+}
+
+.mood-option:hover {
+  background: var(--surface-2);
+  border-color: var(--border-bright);
+  transform: translateY(-2px) scale(1.05);
+}
+
+.mood-option:active {
+  transform: scale(0.95);
+}
+
+.mood-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.mood-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.mood-checkin-thanks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-soft);
+  animation: moodFadeIn 0.3s var(--ease) both;
+}
+
+.mood-thanks-emoji {
+  font-size: 22px;
+}
+
+@keyframes moodFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
