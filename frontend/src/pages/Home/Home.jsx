@@ -161,6 +161,7 @@ export default function Home() {
   const [input, setInput]                 = useState("");
   const [sending, setSending]             = useState(false);
   const [isDark, setIsDark]               = useState(true);
+  const [sidebarOpen, setSidebarOpen]     = useState(false);
   const [activeTone, setActiveTone]       = useState("neutral");
   const [activeModel, setActiveModel]     = useState("aither-mini");
 
@@ -401,6 +402,8 @@ export default function Home() {
         onSelectSession={loadSession}
         onNewChat={handleNewChat}
         onDeleteChat={handleDeleteChat}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <div className="home-main">
@@ -409,6 +412,7 @@ export default function Home() {
           messages={messages}
           onThemeToggle={toggleTheme}
           isDark={isDark}
+          onMenuOpen={() => setSidebarOpen(true)}
         />
 
         <div className="home-scroll" ref={scrollRef}>

@@ -16,6 +16,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  min-width: 0;
 }
 
 /* Scrollable chat area */
@@ -186,7 +187,6 @@
   justify-content: flex-start;
 }
 
-/* Author label */
 .message-author {
   font-size: 11px;
   font-weight: 600;
@@ -362,47 +362,16 @@
   to   { transform: translateY(48px); }
 }
 
-/* ── Responsive ── */
-@media (max-width: 640px) {
-  .home-content { padding: 20px 14px 16px; }
-
-  .message-group { max-width: 90%; }
-
-  .examples-row {
-    flex-direction: column;
-    align-items: stretch;
-    width: min(92vw, 480px);
-  }
-
-  .example-card { max-width: 100%; }
-}
 /* ── Markdown rendering ── */
-.message-content p {
-  margin: 0 0 7px;
-  line-height: 1.65;
-}
+.message-content p { margin: 0 0 7px; line-height: 1.65; }
 .message-content p:last-child { margin-bottom: 0; }
 .message-content p:empty { display: none; }
-
 .message-content ul,
-.message-content ol {
-  margin: 5px 0 7px;
-  padding-left: 20px;
-}
-.message-content li {
-  margin-bottom: 3px;
-  line-height: 1.58;
-}
+.message-content ol { margin: 5px 0 7px; padding-left: 20px; }
+.message-content li { margin-bottom: 3px; line-height: 1.58; }
 .message-content li:last-child { margin-bottom: 0; }
-
-.message-content strong {
-  font-weight: 600;
-  color: rgba(240, 236, 255, 1);
-}
-.message-content em {
-  font-style: italic;
-  opacity: 0.88;
-}
+.message-content strong { font-weight: 600; color: rgba(240, 236, 255, 1); }
+.message-content em { font-style: italic; opacity: 0.88; }
 .message-content code {
   font-family: 'Fira Code', 'Cascadia Code', monospace;
   font-size: 13px;
@@ -412,11 +381,7 @@
   border-radius: 5px;
   color: var(--lavender);
 }
-.message-content hr {
-  border: none;
-  border-top: 1px solid rgba(157, 135, 245, 0.12);
-  margin: 10px 0;
-}
+.message-content hr { border: none; border-top: 1px solid rgba(157, 135, 245, 0.12); margin: 10px 0; }
 .message-content h1,
 .message-content h2,
 .message-content h3 {
@@ -443,9 +408,7 @@
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
-.message-bubble.streaming {
-  border-color: rgba(157, 135, 245, 0.2);
-}
+.message-bubble.streaming { border-color: rgba(157, 135, 245, 0.2); }
 
 /* ── Timestamps ── */
 .message-time {
@@ -457,3 +420,76 @@
 }
 .time-right { text-align: right; }
 .time-left  { text-align: left; }
+
+/* ── Mobile: 768px and below ── */
+@media (max-width: 768px) {
+  .home-content {
+    padding: 16px 12px 12px;
+    max-width: 100%;
+  }
+
+  .message-group { max-width: 88%; }
+
+  .message-bubble {
+    font-size: 14px;
+    padding: 12px 14px;
+  }
+
+  .prompt-area { padding: 8px 10px 16px; }
+
+  .headline { font-size: clamp(1.6rem, 7vw, 2.4rem); }
+
+  .hero-block.hero-compact {
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  .hero-block.hero-compact .headline { font-size: 1rem; }
+
+  .examples-row {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    padding: 0;
+  }
+
+  .example-card { max-width: 100%; min-width: unset; }
+
+  /* Reduce blob sizes for perf */
+  .blob-1 { width: 280px; height: 280px; }
+  .blob-2 { width: 220px; height: 220px; }
+  .blob-3 { width: 180px; height: 180px; }
+
+  /* ToneSelector — make buttons bigger for touch */
+  .tone-btn { width: 46px; height: 46px; }
+
+  /* ContextMeter — full width */
+  .context-meter { width: 100%; }
+
+  /* Thinking component */
+  .thinking-wrap { max-width: 90%; }
+}
+
+/* ── Mobile: 480px and below ── */
+@media (max-width: 480px) {
+  .home-content { padding: 10px 10px 8px; }
+  .message-group { max-width: 94%; }
+  .message-bubble { font-size: 13.5px; padding: 11px 13px; }
+  .prompt-area { padding: 6px 8px 12px; }
+
+  /* Orb smaller on tiny screens */
+  .orb { width: 100px !important; height: 100px !important; }
+  .orb-wrap.compact .orb { width: 42px !important; height: 42px !important; }
+
+  /* ToneSelector — full width on very small screens */
+  .tone-group { width: 100%; justify-content: space-around; }
+  .tone-btn { flex: 1; }
+
+  /* MoodCheckIn — wrap tighter */
+  .mood-checkin { max-width: 100%; }
+  .mood-checkin-options { gap: 4px; }
+  .mood-option { min-width: 44px; padding: 6px 6px; }
+  .mood-emoji { font-size: 18px; }
+  .mood-label { font-size: 9px; }
+}
