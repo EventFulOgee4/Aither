@@ -19,9 +19,7 @@
     0 0 0 1px var(--border),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(24px);
-  transition:
-    box-shadow 0.25s ease,
-    transform 0.25s var(--ease-spring);
+  transition: box-shadow 0.25s ease;
   animation: promptCardIn 0.5s var(--ease) both;
 }
 
@@ -33,7 +31,6 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* Textarea */
 .prompt-textarea {
   width: 100%;
   border: none;
@@ -50,17 +47,13 @@
   overflow-y: auto;
 }
 
-.prompt-textarea::placeholder {
-  color: rgba(185, 178, 214, 0.38);
-}
-
+.prompt-textarea::placeholder { color: rgba(185, 178, 214, 0.38); }
 .prompt-textarea::-webkit-scrollbar { width: 4px; }
 .prompt-textarea::-webkit-scrollbar-thumb {
   background: rgba(157, 135, 245, 0.15);
   border-radius: 4px;
 }
 
-/* Bottom row */
 .prompt-footer {
   display: flex;
   align-items: center;
@@ -68,12 +61,15 @@
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
+  gap: 8px;
 }
 
 .prompt-left-tools {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .prompt-tool-btn {
@@ -89,10 +85,8 @@
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
-  transition:
-    background 0.18s ease,
-    color 0.18s ease,
-    border-color 0.18s ease;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
 .prompt-tool-btn:hover {
@@ -105,6 +99,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .prompt-char-count {
@@ -114,11 +109,8 @@
   transition: color 0.2s ease;
 }
 
-.prompt-char-count.warning {
-  color: rgba(255, 180, 100, 0.7);
-}
+.prompt-char-count.warning { color: rgba(255, 180, 100, 0.7); }
 
-/* Mic button */
 .prompt-mic {
   width: 32px;
   height: 32px;
@@ -130,10 +122,7 @@
   color: var(--muted);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition:
-    background 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s var(--ease-spring);
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s var(--ease-spring);
 }
 
 .prompt-mic:hover {
@@ -142,7 +131,6 @@
   transform: scale(1.06);
 }
 
-/* Send button */
 .prompt-send {
   width: 38px;
   height: 38px;
@@ -155,10 +143,7 @@
   color: #fff;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(115, 92, 219, 0.32);
-  transition:
-    transform 0.2s var(--ease-spring),
-    box-shadow 0.2s ease,
-    filter 0.2s ease;
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease, filter 0.2s ease;
   flex-shrink: 0;
 }
 
@@ -168,18 +153,11 @@
   filter: brightness(1.06);
 }
 
-.prompt-send:active:not(:disabled) {
-  transform: scale(0.93);
-}
+.prompt-send:active:not(:disabled) { transform: scale(0.93); }
+.prompt-send:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.prompt-send:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.actions-menu, .model-selector {
-  position: relative;
-}
+/* Dropdowns */
+.actions-menu, .model-selector { position: relative; }
 
 .model-trigger span {
   max-width: 120px;
@@ -211,7 +189,7 @@
 
 @keyframes dropupIn {
   from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .model-option, .actions-option {
@@ -234,18 +212,9 @@
   white-space: nowrap;
 }
 
-.model-option:hover, .actions-option:hover {
-  background: var(--surface-2);
-}
-
+.model-option:hover, .actions-option:hover { background: var(--surface-2); }
 .model-option.selected { color: var(--lavender); }
-
-.model-option.unavailable {
-  cursor: default;
-  opacity: 0.45;
-  border: 1px dashed var(--border);
-}
-
+.model-option.unavailable { cursor: default; opacity: 0.45; border: 1px dashed var(--border); }
 .model-option.unavailable:hover { background: transparent; }
 .model-option-name { flex: 1; }
 
@@ -264,12 +233,33 @@
 .actions-option:disabled:hover { background: transparent; }
 
 @keyframes promptCardIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .prompt-wrap { padding: 0 8px 6px; }
+
+  .prompt-card { padding: 12px; border-radius: var(--radius-lg); }
+
+  .prompt-textarea { font-size: 14px; min-height: 38px; }
+
+  .prompt-footer { margin-top: 8px; padding-top: 8px; }
+
+  /* Hide model name text on mobile — show icon only */
+  .model-trigger span { display: none; }
+  .prompt-tool-btn { padding: 5px 7px; }
+
+  /* Hide char count on small screens */
+  .prompt-char-count { display: none; }
+
+  .prompt-send { width: 40px; height: 40px; }
+  .prompt-mic { width: 34px; height: 34px; }
+}
+
+@media (max-width: 480px) {
+  .prompt-card { padding: 10px; }
+  .prompt-textarea { font-size: 13.5px; }
+  .prompt-send { width: 38px; height: 38px; }
 }
