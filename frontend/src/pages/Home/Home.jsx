@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import "./home.css";
 
 import Sidebar from "../../components/Sidebar/Sidebar";
@@ -7,6 +7,9 @@ import OrbLogo from "../../components/OrbLogo/OrbLogo";
 import PromptCard from "../../components/PromptCard/PromptCard";
 import ExampleCards from "../../components/ExampleCards/ExampleCards";
 import MoodCheckIn from "../../components/MoodCheckIn/MoodCheckIn";
+import ToneSelector, { TONES } from "../../components/ToneSelector/ToneSelector";
+import ContextMeter from "../../components/ContextMeter/ContextMeter";
+import Thinking from "../../components/Thinking/Thinking";
 import { ensureFreshAccessToken } from "../../api/client";
 import { logMood } from "../../api/mood";
 
@@ -17,6 +20,16 @@ import {
   listSessions,
   sendMessageStream,
 } from "../../api/chat";
+
+const TONE_PROMPTS = {
+  assertive:
+    "\n\n[Tone: Respond in an assertive, direct, and confident manner. Be clear and straightforward with your guidance. Encourage the user to take decisive action.]",
+  tender:
+    "\n\n[Tone: Respond in a tender, gentle, and nurturing manner. Be soft and caring with your words. Make the user feel safe and comforted.]",
+  empathy:
+    "\n\n[Tone: Respond with deep empathy and emotional understanding. Validate the user's feelings. Reflect their emotions back to them and show that you truly understand their experience.]",
+  neutral: "",
+};
 
 // ── Markdown renderer ─────────────────────────────────────────────────────
 function renderMarkdown(text) {
@@ -148,6 +161,8 @@ export default function Home() {
   const [input, setInput]                 = useState("");
   const [sending, setSending]             = useState(false);
   const [isDark, setIsDark]               = useState(true);
+  const [activeTone, setActiveTone]       = useState("neutral");
+  const [activeModel, setActiveModel]     = useState("aither-mini");
 
   const [moodCheckInVisible, setMoodCheckInVisible] = useState(false);
   const aiResponseCountRef = useRef(0);
@@ -157,6 +172,10 @@ export default function Home() {
   const cancelStreamRef = useRef(null);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const currentTone = useMemo(
+    () => TONES.find((t) => t.id === activeTone) || TONES[3],
+    [activeTone]
+  );
 
   // ── Theme ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -305,7 +324,8 @@ export default function Home() {
       { id: streamingId, role: "assistant", content: "", streaming: true, timestamp: now },
     ]);
 
-    cancelStreamRef.current = sendMessageStream(text, sessionId, {
+    const textWithTone = text + (TONE_PROMPTS[activeTone] || "");
+    cancelStreamRef.current = sendMessageStream(textWithTone, sessionId, {
       onMeta: (meta) => {
         if (meta.session_title && meta.session_title !== "New Session") {
           setSessions((prev) =>
@@ -395,7 +415,7 @@ export default function Home() {
           <div className="home-content">
 
             <div className={`hero-block${hasMessages ? " hero-compact" : ""}`}>
-              <OrbLogo sending={sending} compact={hasMessages} />
+              <OrbLogo sending={sending} compact={hasMessages} toneGradient={currentTone.gradient} />
               <div className="hero-text">
                 <h1 className="headline">
                   {hasMessages ? "Aither" : "How are you feeling today?"}
@@ -405,6 +425,10 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            {!hasMessages && (
+              <ToneSelector activeTone={activeTone} onToneChange={setActiveTone} />
+            )}
 
             {hasMessages && (
               <div className="messages-wrap">
@@ -455,6 +479,14 @@ export default function Home() {
                   </div>
                 )}
 
+                {sending && (
+                  <div className="message-row assistant-row">
+                    <div className="message-group">
+                      <Thinking />
+                    </div>
+                  </div>
+                )}
+
                 <div className="scroll-anchor" ref={bottomRef} />
               </div>
             )}
@@ -471,11 +503,16 @@ export default function Home() {
         </div>
 
         <div className="prompt-area">
+          <ContextMeter messageCount={messages.length} />
           <PromptCard
             value={input}
             onChange={setInput}
             onSend={() => handleSend()}
             disabled={sending}
+            messages={messages}
+            sessionTitle={activeSession?.title}
+            model={activeModel}
+            onModelChange={setActiveModel}
           />
         </div>
       </div>

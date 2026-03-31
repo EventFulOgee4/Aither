@@ -1,0 +1,56 @@
+.context-meter {
+  width: min(720px, 88vw);
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.context-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.context-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.context-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.context-value.warning {
+  color: #e8c56a;
+}
+
+.context-value.critical {
+  color: #e87a6a;
+}
+
+.context-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.context-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--lavender);
+  transition: width 0.4s ease;
+}
+
+.context-fill.warning {
+  background: #e8c56a;
+}
+
+.context-fill.critical {
+  background: #e87a6a;
+}

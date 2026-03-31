@@ -1,0 +1,24 @@
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--lavender) 40%,
+    #fff 50%,
+    var(--lavender) 60%,
+    var(--muted) 100%
+  );
+  background-size: calc(var(--shimmer-spread, 2) * 100%) 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-slide var(--shimmer-duration, 2s) ease-in-out infinite;
+}
+
+@keyframes shimmer-slide {
+  0% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: -100% center;
+  }
+}
