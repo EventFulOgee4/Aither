@@ -118,3 +118,60 @@
   0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(123, 202, 138, 0.55); }
   50%       { opacity: 0.75; box-shadow: 0 0 10px rgba(123, 202, 138, 0.7); }
 }
+/* ── Hamburger menu button — mobile only ── */
+.topbar-hamburger {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--muted);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.topbar-hamburger:hover {
+  color: var(--lavender);
+  background: var(--surface-2);
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .topbar-hamburger {
+    display: flex;
+  }
+
+  .topbar-model {
+    display: none;
+  }
+
+  .topbar-status {
+    position: static;
+    transform: none;
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-soft);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-pill-label {
+    display: none;
+  }
+
+  .topbar-pill {
+    padding: 7px 9px;
+  }
+}

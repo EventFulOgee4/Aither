@@ -1,7 +1,7 @@
 import React from "react";
 import "./topbar.css";
 
-export default function Topbar({ sessionTitle, messages = [], onThemeToggle, isDark }) {
+export default function Topbar({ sessionTitle, messages = [], onThemeToggle, isDark, onMenuOpen }) {
   function handleExportPDF() {
     if (!messages.length) return;
 
@@ -73,6 +73,18 @@ export default function Topbar({ sessionTitle, messages = [], onThemeToggle, isD
 
   return (
     <div className="topbar">
+      {/* Hamburger — mobile only */}
+      <button
+        className="topbar-hamburger"
+        type="button"
+        onClick={onMenuOpen}
+        aria-label="Open menu"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </button>
+
       {/* Model selector */}
       <button className="topbar-model" type="button" aria-label="Select model">
         <span className="topbar-model-dot" />
