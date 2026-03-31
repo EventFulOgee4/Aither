@@ -22,8 +22,8 @@ export default function MoodCheckIn({ onLog, onDismiss }) {
     } catch (e) {
       console.error("Mood log failed:", e);
     }
-    // Auto-dismiss after a short delay
-    setTimeout(() => onDismiss?.(), 1800);
+    // Auto-dismiss after a short delay. Changed from 1800 to 4000. Do we need this?
+    setTimeout(() => onDismiss?.(), 4000);
   }
 
   return (
