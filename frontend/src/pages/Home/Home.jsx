@@ -21,27 +21,40 @@ import {
   sendMessageStream,
 } from "../../api/chat";
 
-const TONE_PROMPTS = {
-  assertive:
-    "\n\n[Tone: Respond in an assertive, direct, and confident manner. Be clear and straightforward with your guidance. Encourage the user to take decisive action.]",
-  tender:
-    "\n\n[Tone: Respond in a tender, gentle, and nurturing manner. Be soft and caring with your words. Make the user feel safe and comforted.]",
-  empathy:
-    "\n\n[Tone: Respond with deep empathy and emotional understanding. Validate the user's feelings. Reflect their emotions back to them and show that you truly understand their experience.]",
-  neutral: "",
+// Tone is now handled server-side in brain.py
+
+// Blob colors that match each tone
+const TONE_BLOB_COLORS = {
+  assertive: {
+    blob1: "rgba(168, 124, 201, 0.7)",   // purple
+    blob2: "rgba(140, 90, 200, 0.55)",
+    blob3: "rgba(180, 100, 220, 0.5)",
+  },
+  tender: {
+    blob1: "rgba(100, 180, 120, 0.65)",  // green
+    blob2: "rgba(80, 160, 100, 0.5)",
+    blob3: "rgba(120, 200, 140, 0.45)",
+  },
+  empathy: {
+    blob1: "rgba(210, 170, 80, 0.65)",   // gold
+    blob2: "rgba(190, 150, 60, 0.5)",
+    blob3: "rgba(220, 180, 90, 0.45)",
+  },
+  neutral: {
+    blob1: "rgba(120, 96, 245, 0.8)",    // default purple
+    blob2: "rgba(85, 120, 255, 0.65)",
+    blob3: "rgba(200, 108, 255, 0.55)",
+  },
 };
 
 // ── Markdown renderer ─────────────────────────────────────────────────────
 function renderMarkdown(text) {
   if (!text) return "";
-
-  // Escape HTML
   let escaped = text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  // Process line by line for block elements
   const lines = escaped.split("\n");
   const output = [];
   let inUl = false;
@@ -73,14 +86,12 @@ function renderMarkdown(text) {
     const raw = lines[i];
     const line = raw.trim();
 
-    // Horizontal rule
     if (/^---+$/.test(line) || /^===+$/.test(line)) {
       flushPara(); closeList();
       output.push("<hr/>");
       continue;
     }
 
-    // Headings
     const hMatch = line.match(/^(#{1,3})\s+(.+)$/);
     if (hMatch) {
       flushPara(); closeList();
@@ -89,7 +100,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // Unordered list
     const ulMatch = line.match(/^[-*•]\s+(.+)$/);
     if (ulMatch) {
       flushPara();
@@ -98,7 +108,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // Ordered list
     const olMatch = line.match(/^\d+\.\s+(.+)$/);
     if (olMatch) {
       flushPara();
@@ -107,20 +116,14 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // Empty line — flush paragraph
-    if (line === "") {
-      flushPara(); closeList();
-      continue;
-    }
+    if (line === "") { flushPara(); closeList(); continue; }
 
-    // Normal text — close any open list, buffer for paragraph
     closeList();
     paraBuffer.push(inlineFormat(line));
   }
 
   flushPara();
   closeList();
-
   return output.join("\n");
 }
 
@@ -133,7 +136,6 @@ function MessageContent({ content }) {
   );
 }
 
-// ── Timestamp formatter ───────────────────────────────────────────────────
 function formatTime(timestamp) {
   if (!timestamp) return "";
   try {
@@ -148,37 +150,32 @@ function formatTime(timestamp) {
       " · " +
       date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     );
-  } catch {
-    return "";
-  }
+  } catch { return ""; }
 }
 
 // ── Home component ────────────────────────────────────────────────────────
 export default function Home() {
-  const [sessions, setSessions]           = useState([]);
+  const [sessions, setSessions]               = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
-  const [messages, setMessages]           = useState([]);
-  const [input, setInput]                 = useState("");
-  const [sending, setSending]             = useState(false);
-  const [isDark, setIsDark]               = useState(true);
-  const [sidebarOpen, setSidebarOpen]     = useState(false);
-  const [activeTone, setActiveTone]       = useState("neutral");
-  const [activeModel, setActiveModel]     = useState("aither-mini");
-
+  const [messages, setMessages]               = useState([]);
+  const [input, setInput]                     = useState("");
+  const [sending, setSending]                 = useState(false);
+  const [isDark, setIsDark]                   = useState(true);
+  const [sidebarOpen, setSidebarOpen]         = useState(false);
+  const [activeTone, setActiveTone]           = useState("neutral");
+  const [activeModel, setActiveModel]         = useState("aither-mini");
   const [moodCheckInVisible, setMoodCheckInVisible] = useState(false);
+
   const aiResponseCountRef = useRef(0);
+  const scrollRef           = useRef(null);
+  const bottomRef           = useRef(null);
+  const cancelStreamRef     = useRef(null);
 
-  const scrollRef      = useRef(null);
-  const bottomRef      = useRef(null);
-  const cancelStreamRef = useRef(null);
+  const activeSession  = sessions.find((s) => s.id === activeSessionId);
+  const currentTone    = useMemo(() => TONES.find((t) => t.id === activeTone) || TONES[3], [activeTone]);
+  const toneBlobs      = TONE_BLOB_COLORS[activeTone] || TONE_BLOB_COLORS.neutral;
 
-  const activeSession = sessions.find((s) => s.id === activeSessionId);
-  const currentTone = useMemo(
-    () => TONES.find((t) => t.id === activeTone) || TONES[3],
-    [activeTone]
-  );
-
-  // ── Theme ────────────────────────────────────────────────────────────────
+  // ── Theme ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     const dark = saved ? saved === "dark" : true;
@@ -194,7 +191,7 @@ export default function Home() {
     localStorage.setItem("theme", val);
   }
 
-  // ── Scroll ───────────────────────────────────────────────────────────────
+  // ── Scroll ──────────────────────────────────────────────────────────────
   const scrollToBottom = useCallback((behavior = "smooth") => {
     bottomRef.current?.scrollIntoView({ behavior });
   }, []);
@@ -210,11 +207,7 @@ export default function Home() {
   }
 
   async function loadSession(sessionId) {
-    if (!sessionId) {
-      setActiveSessionId(null);
-      setMessages([]);
-      return;
-    }
+    if (!sessionId) { setActiveSessionId(null); setMessages([]); return; }
     setActiveSessionId(sessionId);
     setMoodCheckInVisible(false);
     aiResponseCountRef.current = 0;
@@ -222,7 +215,7 @@ export default function Home() {
     setMessages(msgs);
   }
 
-  // ── Init ─────────────────────────────────────────────────────────────────
+  // ── Init ────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -234,9 +227,7 @@ export default function Home() {
           const msgs = await getMessages(firstId);
           setMessages(msgs);
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) { console.error(e); }
     })();
   }, []);
 
@@ -244,16 +235,11 @@ export default function Home() {
     scrollToBottom(messages.length <= 2 ? "instant" : "smooth");
   }, [messages, sending]);
 
-  // ── Mood ─────────────────────────────────────────────────────────────────
   async function handleLogMood(mood, intensity) {
-    try {
-      await logMood(mood, intensity, "");
-    } catch (e) {
-      console.error("Mood log failed:", e);
-    }
+    try { await logMood(mood, intensity, ""); }
+    catch (e) { console.error("Mood log failed:", e); }
   }
 
-  // ── Chat handlers ─────────────────────────────────────────────────────────
   async function handleNewChat() {
     try {
       const s = await createSession("New Session");
@@ -274,16 +260,9 @@ export default function Home() {
       const updated = await listSessions();
       setSessions(updated);
       const remaining = updated.filter((s) => s.id !== deletingId);
-      if (remaining.length > 0) {
-        await loadSession(remaining[0].id);
-      } else {
-        setActiveSessionId(null);
-        setMessages([]);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Could not delete chat.");
-    }
+      if (remaining.length > 0) await loadSession(remaining[0].id);
+      else { setActiveSessionId(null); setMessages([]); }
+    } catch (e) { console.error(e); alert("Could not delete chat."); }
   }
 
   async function handleSend(prefilledText) {
@@ -299,10 +278,7 @@ export default function Home() {
     const streamingId = `streaming-${Date.now()}`;
     const now = new Date().toISOString();
 
-    setMessages((prev) => [
-      ...prev,
-      { id: tempUserId, role: "user", content: text, timestamp: now },
-    ]);
+    setMessages((prev) => [...prev, { id: tempUserId, role: "user", content: text, timestamp: now }]);
 
     let sessionId = activeSessionId;
     if (!sessionId) {
@@ -320,65 +296,39 @@ export default function Home() {
       }
     }
 
-    setMessages((prev) => [
-      ...prev,
-      { id: streamingId, role: "assistant", content: "", streaming: true, timestamp: now },
-    ]);
+    setMessages((prev) => [...prev, { id: streamingId, role: "assistant", content: "", streaming: true, timestamp: now }]);
 
-    const textWithTone = text + (TONE_PROMPTS[activeTone] || "");
-    cancelStreamRef.current = sendMessageStream(textWithTone, sessionId, {
+    cancelStreamRef.current = sendMessageStream(text, sessionId, {
       onMeta: (meta) => {
         if (meta.session_title && meta.session_title !== "New Session") {
-          setSessions((prev) =>
-            prev.map((s) =>
-              s.id === meta.session_id ? { ...s, title: meta.session_title } : s
-            )
-          );
+          setSessions((prev) => prev.map((s) => s.id === meta.session_id ? { ...s, title: meta.session_title } : s));
         }
         if (meta.user_message_id) {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === tempUserId ? { ...m, id: meta.user_message_id } : m
-            )
-          );
+          setMessages((prev) => prev.map((m) => m.id === tempUserId ? { ...m, id: meta.user_message_id } : m));
         }
       },
-
       onChunk: (chunk) => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === streamingId ? { ...m, content: m.content + chunk } : m
-          )
-        );
+        setMessages((prev) => prev.map((m) => m.id === streamingId ? { ...m, content: m.content + chunk } : m));
         scrollToBottom("smooth");
       },
-
       onDone: async (done) => {
         const aiTimestamp = new Date().toISOString();
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === streamingId
-              ? { ...m, id: done.ai_message_id ?? m.id, streaming: false, timestamp: aiTimestamp }
-              : m
-          )
-        );
+        setMessages((prev) => prev.map((m) =>
+          m.id === streamingId
+            ? { ...m, id: done.ai_message_id ?? m.id, streaming: false, timestamp: aiTimestamp }
+            : m
+        ));
         setSending(false);
         cancelStreamRef.current = null;
-
-        // Mood check-in every 3rd AI response
         aiResponseCountRef.current += 1;
-        if (aiResponseCountRef.current % 3 === 0) {
-          setMoodCheckInVisible(true);
-        }
-
+        if (aiResponseCountRef.current % 3 === 0) setMoodCheckInVisible(true);
         await refreshSessions(false);
       },
+      tone: activeTone,
 
       onError: (err) => {
         console.error("Stream error:", err);
-        setMessages((prev) =>
-          prev.filter((m) => m.id !== streamingId && m.id !== tempUserId)
-        );
+        setMessages((prev) => prev.filter((m) => m.id !== streamingId && m.id !== tempUserId));
         setSending(false);
         alert("Send failed. Check your login token and backend.");
       },
@@ -389,10 +339,20 @@ export default function Home() {
 
   return (
     <div className="home-root">
+      {/* Background blobs — colors transition with tone */}
       <div className="animated-bg">
-        <div className="bg-blob blob-1" />
-        <div className="bg-blob blob-2" />
-        <div className="bg-blob blob-3" />
+        <div
+          className="bg-blob blob-1"
+          style={{ background: `radial-gradient(circle, ${toneBlobs.blob1}, transparent)`, transition: "background 1.2s ease" }}
+        />
+        <div
+          className="bg-blob blob-2"
+          style={{ background: `radial-gradient(circle, ${toneBlobs.blob2}, transparent)`, transition: "background 1.2s ease" }}
+        />
+        <div
+          className="bg-blob blob-3"
+          style={{ background: `radial-gradient(circle, ${toneBlobs.blob3}, transparent)`, transition: "background 1.2s ease" }}
+        />
         <div className="bg-grid" />
       </div>
 
@@ -462,7 +422,6 @@ export default function Home() {
                           </div>
                         )}
                       </div>
-
                       {m.timestamp && !m.streaming && (
                         <div className={`message-time ${m.role === "user" ? "time-right" : "time-left"}`}>
                           {formatTime(m.timestamp)}
