@@ -49,14 +49,9 @@
   transform: translateY(-2px) scale(1.05);
 }
 
-.mood-option:active {
-  transform: scale(0.95);
-}
+.mood-option:active { transform: scale(0.95); }
 
-.mood-emoji {
-  font-size: 20px;
-  line-height: 1;
-}
+.mood-emoji { font-size: 20px; line-height: 1; }
 
 .mood-label {
   font-size: 10px;
@@ -74,11 +69,21 @@
   animation: moodFadeIn 0.3s var(--ease) both;
 }
 
-.mood-thanks-emoji {
-  font-size: 22px;
-}
+.mood-thanks-emoji { font-size: 22px; }
 
 @keyframes moodFadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .mood-checkin {
+    max-width: 100%;
+    padding: 12px;
+  }
+  .mood-checkin-options { gap: 4px; }
+  .mood-option { min-width: 44px; padding: 7px 6px; }
+  .mood-emoji { font-size: 18px; }
+  .mood-label { font-size: 9px; }
 }
