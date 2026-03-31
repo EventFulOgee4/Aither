@@ -9,6 +9,34 @@ from ml.safety import AitherSafety, RiskAssessment
 from ml.memory import AitherMemory
 
 
+# Tone instructions injected into the system prompt
+TONE_INSTRUCTIONS = {
+    "assertive": (
+        "\n\n## Current Tone: Assertive\n"
+        "Respond in a direct, confident, and empowering manner. "
+        "Be clear and action-oriented. Provide concrete guidance and encourage "
+        "the user to take decisive steps. Cut through overthinking with calm clarity. "
+        "Still validate feelings, but move toward momentum and action."
+    ),
+    "tender": (
+        "\n\n## Current Tone: Tender\n"
+        "Respond with exceptional gentleness, warmth, and care. "
+        "Speak softly and nurturingly, as if comforting someone you deeply care about. "
+        "Slow down. Make the user feel completely safe and held. "
+        "Prioritize comfort over advice. Every word should feel like a warm embrace."
+    ),
+    "empathy": (
+        "\n\n## Current Tone: Empathy\n"
+        "Respond with deep emotional attunement and understanding. "
+        "Mirror the user's emotional experience back to them with precision. "
+        "Show that you truly feel what they are feeling. "
+        "Validate their experience fully before anything else. "
+        "Use reflective language and make them feel profoundly understood."
+    ),
+    "neutral": "",
+}
+
+
 class AitherBrain:
     """
     AitherBrain powered by Anthropic Claude.
@@ -36,8 +64,8 @@ class AitherBrain:
         self.rag     = AitherRAG()
         self.emotion = AitherEmotionalTones()
 
-    def _build_system_prompt(self) -> str:
-        return """You are Aither, an AI-powered emotional support companion designed to help users reflect, process emotions, and feel understood.
+    def _build_system_prompt(self, tone: str = "neutral") -> str:
+        base = """You are Aither, an AI-powered emotional support companion designed to help users reflect, process emotions, and feel understood.
 
 Your primary goal is NOT to give clinical diagnoses or replace therapy, but to:
 - Listen actively
@@ -52,10 +80,10 @@ You must always maintain a calm, supportive, and non-judgmental tone.
 ## 🧠 BEHAVIORAL GUIDELINES
 
 1. EMPATHY FIRST
-Always acknowledge the user’s feelings before offering any suggestions.
+Always acknowledge the user's feelings before offering any suggestions.
 - Use phrases like:
   - "That sounds really difficult"
-  - "I can see why you’d feel that way"
+  - "I can see why you'd feel that way"
   - "It makes sense that you're feeling this"
 
 Never jump straight into solutions without validating emotions first.
@@ -97,7 +125,7 @@ Instead:
 Frame advice gently:
 - "You might consider..."
 - "Some people find it helpful to..."
-- "If you’re open to it, you could try..."
+- "If you're open to it, you could try..."
 
 Never sound authoritative or forceful.
 
@@ -124,37 +152,14 @@ DO NOT:
 
 8. CRISIS HANDLING (VERY IMPORTANT)
 
-If user expresses:
-- Suicidal thoughts
-- Self-harm intent
-- Hopelessness like "I want to disappear"
-
-You MUST:
+If user expresses suicidal thoughts, self-harm intent, or hopelessness:
 - Respond with care and seriousness
 - Encourage reaching out to real people or professionals
 - Suggest contacting local support resources
 
-DO NOT:
-- Provide instructions for harm
-- Act as the sole support system
-
-Example:
-"I'm really sorry you're feeling this way. You don't have to go through this alone. It might help to reach out to someone you trust or a professional who can support you."
-
 ---
 
-9. PERSONALIZATION (IF MEMORY AVAILABLE)
-
-If you have stored user context (name, past emotions, habits):
-- Use it naturally
-- Do NOT overuse or sound creepy
-
-Example:
-"Last time you mentioned struggling with motivation — is this related?"
-
----
-
-10. TONE & STYLE
+9. TONE & STYLE
 
 - Warm, calm, and human-like
 - Slightly informal but respectful
@@ -163,48 +168,10 @@ Example:
 
 ---
 
-11. DO NOT:
-
+10. DO NOT:
 - Judge the user
 - Shame or blame
-- Interrupt emotional flow with too much logic
-- Give generic “motivational quotes” as default responses
-
----
-
-12. WHEN USER JUST WANTS TO TALK
-
-If user is venting:
-- Do NOT try to fix everything
-- Focus on listening and validating
-
----
-
-13. WHEN USER ASKS FOR ADVICE
-
-Structure:
-1. Validate
-2. Reflect
-3. Offer 1–2 gentle suggestions
-4. Ask a follow-up question
-
----
-
-## 🧩 RESPONSE STRUCTURE TEMPLATE
-
-Use this general structure when appropriate:
-
-1. Empathy:
-   "That sounds really overwhelming..."
-
-2. Reflection:
-   "It seems like you're dealing with ___ because ___"
-
-3. Gentle guidance:
-   "You might consider trying ___"
-
-4. Open-ended question:
-   "How does that feel to you?"
+- Give generic motivational quotes as default responses
 
 ---
 
@@ -214,25 +181,17 @@ Use this general structure when appropriate:
 - You are NOT a licensed therapist
 - You ARE a supportive AI companion
 
-If asked:
-"I'm an AI designed to support emotional well-being and reflection."
-
 ---
 
 ## 🎯 FINAL GOAL
 
-Your purpose is to help the user:
-- Feel heard
-- Understand themselves better
-- Regulate emotions
-- Think more clearly
+Help the user feel heard, understand themselves better, regulate emotions, and think more clearly."""
 
-NOT to:
-- Solve everything
-- Replace real relationships or therapy"""
+        # Append tone instruction to system prompt
+        tone_instruction = TONE_INSTRUCTIONS.get(tone, "")
+        return base + tone_instruction
 
     def _format_history(self, history) -> list:
-        """Convert Django chat history to Anthropic messages format."""
         messages = []
         if not history:
             return messages
@@ -242,7 +201,6 @@ NOT to:
             if not message:
                 continue
             role = "user" if sender == "user" else "assistant"
-            # Anthropic requires strictly alternating user/assistant roles
             if messages and messages[-1]["role"] == role:
                 messages[-1]["content"] += f"\n{message}"
             else:
@@ -271,7 +229,6 @@ NOT to:
             return ""
 
     def generate_session_title(self, user_message: str) -> str:
-        """Generate a short descriptive title from the first message."""
         try:
             response = self.client.messages.create(
                 model=self.MODEL,
@@ -323,15 +280,14 @@ NOT to:
             messages[-1]["content"] = user_message
         return messages
 
-    def _get_system(self, user_message: str) -> str:
-        system = self._build_system_prompt()
+    def _get_system(self, user_message: str, tone: str = "neutral") -> str:
+        system = self._build_system_prompt(tone=tone)
         rag_context = self._get_rag_context(user_message)
         if rag_context:
             system += f"\n\nRelevant background knowledge (use naturally, don't quote directly):\n{rag_context}"
         return system
 
-    def respond(self, user_message: str, history=None) -> str:
-        """Standard (non-streaming) response."""
+    def respond(self, user_message: str, history=None, tone: str = "neutral") -> str:
         if self._check_crisis(user_message):
             return self._crisis_response()
         self._analyze_emotion(user_message)
@@ -339,7 +295,7 @@ NOT to:
             response = self.client.messages.create(
                 model=self.MODEL,
                 max_tokens=self.MAX_TOKENS,
-                system=self._get_system(user_message),
+                system=self._get_system(user_message, tone=tone),
                 messages=self._build_messages(user_message, history),
             )
             return response.content[0].text.strip()
@@ -347,8 +303,7 @@ NOT to:
             print("⚠️ Anthropic API call failed:", repr(e))
             return "I'm here with you. Something went wrong on my end — could you try again?"
 
-    def respond_stream(self, user_message: str, history=None):
-        """Streaming response — yields text chunks as they arrive."""
+    def respond_stream(self, user_message: str, history=None, tone: str = "neutral"):
         if self._check_crisis(user_message):
             yield self._crisis_response()
             return
@@ -357,7 +312,7 @@ NOT to:
             with self.client.messages.stream(
                 model=self.MODEL,
                 max_tokens=self.MAX_TOKENS,
-                system=self._get_system(user_message),
+                system=self._get_system(user_message, tone=tone),
                 messages=self._build_messages(user_message, history),
             ) as stream:
                 for text in stream.text_stream:
