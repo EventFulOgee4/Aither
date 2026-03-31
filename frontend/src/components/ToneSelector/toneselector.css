@@ -52,6 +52,7 @@
   white-space: nowrap;
   pointer-events: none;
   animation: tooltip-in 0.1s ease;
+  z-index: 10;
 }
 
 .tone-tooltip::after {
@@ -65,12 +66,28 @@
 }
 
 @keyframes tooltip-in {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(4px);
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .tone-group {
+    margin-top: 12px;
   }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
+  .tone-btn {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tone-group {
+    width: 100%;
+    margin-top: 10px;
+  }
+  .tone-btn {
+    flex: 1;
+    height: 48px;
   }
 }
