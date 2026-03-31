@@ -1,6 +1,6 @@
 .context-meter {
   width: min(720px, 88vw);
-  margin-bottom: 10px;
+  margin: 0 auto 10px;
   flex-shrink: 0;
 }
 
@@ -24,13 +24,8 @@
   color: var(--muted);
 }
 
-.context-value.warning {
-  color: #e8c56a;
-}
-
-.context-value.critical {
-  color: #e87a6a;
-}
+.context-value.warning { color: #e8c56a; }
+.context-value.critical { color: #e87a6a; }
 
 .context-track {
   width: 100%;
@@ -47,10 +42,13 @@
   transition: width 0.4s ease;
 }
 
-.context-fill.warning {
-  background: #e8c56a;
-}
+.context-fill.warning { background: #e8c56a; }
+.context-fill.critical { background: #e87a6a; }
 
-.context-fill.critical {
-  background: #e87a6a;
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .context-meter {
+    width: calc(100% - 16px);
+    margin: 0 8px 8px;
+  }
 }
