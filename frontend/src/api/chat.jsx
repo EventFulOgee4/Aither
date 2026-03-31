@@ -7,6 +7,17 @@ function unwrapList(data) {
   return Array.isArray(data) ? data : data?.results ?? [];
 }
 
+function toUIMsg(m) {
+  return {
+    id: m.id,
+    role: m.sender === "ai" ? "assistant" : "user",
+    content: m.message,
+    emotion: m.emotion ?? null,
+    confidence: m.confidence ?? null,
+    timestamp: m.timestamp ?? null,
+  };
+}
+
 export async function listSessions() {
   const res = await api.get("/chat/sessions/");
   return unwrapList(res.data);
@@ -26,14 +37,7 @@ export async function getMessages(sessionId) {
     params: { session: sessionId },
   });
   const list = unwrapList(res.data);
-  return list.map((m) => ({
-    id: m.id,
-    role: m.sender === "ai" ? "assistant" : "user",
-    content: m.message,
-    emotion: m.emotion ?? null,
-    confidence: m.confidence ?? null,
-    timestamp: m.timestamp ?? null,
-  }));
+  return list.map(toUIMsg);
 }
 
 export async function sendMessage(text, sessionId) {
@@ -44,8 +48,6 @@ export async function sendMessage(text, sessionId) {
   });
 
   const rawUser = res.data.user_message ?? res.data;
-  const rawAi = res.data.ai_message;
-
   const userMsg = {
     id: rawUser.id,
     role: "user",
@@ -55,6 +57,7 @@ export async function sendMessage(text, sessionId) {
     timestamp: rawUser.timestamp ?? null,
   };
 
+  const rawAi = res.data.ai_message;
   const aiMsg = rawAi
     ? {
         id: rawAi.id ?? `ai-${Date.now()}`,
@@ -67,24 +70,27 @@ export async function sendMessage(text, sessionId) {
     : null;
 
   return {
-    session: res.data.session ?? { id: sessionId },
+    session: { id: sessionId },
     user_message: userMsg,
     ai_message: aiMsg,
   };
 }
 
 /**
- * sendMessageStream — uses SSE streaming endpoint.
+ * sendMessageStream — SSE streaming endpoint.
  *
  * Calls onChunk(text) for each streamed token.
  * Calls onMeta({ session_id, session_title, user_message_id }) once at start.
  * Calls onDone({ ai_message_id }) once at end.
  * Returns a cancel function.
  */
-export function sendMessageStream(text, sessionId, { onChunk, onMeta, onDone, onError }) {
+export function sendMessageStream(
+  text,
+  sessionId,
+  { onChunk, onMeta, onDone, onError, tone = "neutral" }
+) {
   const token = localStorage.getItem("access");
-
-  const ctrl = new AbortController();
+  const ctrl  = new AbortController();
 
   (async () => {
     try {
@@ -94,7 +100,7 @@ export function sendMessageStream(text, sessionId, { onChunk, onMeta, onDone, on
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ session: sessionId, message: text }),
+        body: JSON.stringify({ session: sessionId, message: text, tone }),
         signal: ctrl.signal,
       });
 
@@ -104,9 +110,9 @@ export function sendMessageStream(text, sessionId, { onChunk, onMeta, onDone, on
         return;
       }
 
-      const reader = res.body.getReader();
+      const reader  = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = "";
+      let buffer    = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -120,12 +126,11 @@ export function sendMessageStream(text, sessionId, { onChunk, onMeta, onDone, on
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6).trim();
           if (!raw) continue;
-
           try {
             const parsed = JSON.parse(raw);
-            if (parsed.type === "meta") onMeta?.(parsed);
+            if (parsed.type === "meta")  onMeta?.(parsed);
             else if (parsed.type === "chunk") onChunk?.(parsed.text);
-            else if (parsed.type === "done") onDone?.(parsed);
+            else if (parsed.type === "done")  onDone?.(parsed);
           } catch {
             // ignore malformed chunks
           }
