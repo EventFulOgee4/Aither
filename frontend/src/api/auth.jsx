@@ -15,7 +15,7 @@ export async function register(username, email, password) {
 }
 
 export function isAuthed() {
-  return Boolean(localStorage.getItem("access"));
+  return Boolean(localStorage.getItem("access") || localStorage.getItem("refresh"));
 }
 
 export function logout() {

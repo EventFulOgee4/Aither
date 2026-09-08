@@ -1,6 +1,4 @@
-import { api } from "./client";
-
-const BASE_URL = "http://127.0.0.1:8000/api";
+import { api, BASE_URL, ensureFreshAccessToken } from "./client.js";
 
 // DRF pagination helper
 function unwrapList(data) {
@@ -18,9 +16,19 @@ function toUIMsg(m) {
   };
 }
 
+async function fetchAll(path, params = {}) {
+  const items = [];
+  let page = 1;
+  while (true) {
+    const { data } = await api.get(path, { params: { ...params, page } });
+    items.push(...unwrapList(data));
+    if (!data.next) return items;
+    page += 1;
+  }
+}
+
 export async function listSessions() {
-  const res = await api.get("/chat/sessions/");
-  return unwrapList(res.data);
+  return fetchAll("/chat/sessions/");
 }
 
 export async function createSession(title = "New Session") {
@@ -33,11 +41,7 @@ export async function deleteSession(sessionId) {
 }
 
 export async function getMessages(sessionId) {
-  const res = await api.get("/chat/messages/", {
-    params: { session: sessionId },
-  });
-  const list = unwrapList(res.data);
-  return list.map(toUIMsg);
+  return (await fetchAll("/chat/messages/", { session: sessionId })).map(toUIMsg);
 }
 
 export async function sendMessage(text, sessionId) {
@@ -89,11 +93,12 @@ export function sendMessageStream(
   sessionId,
   { onChunk, onMeta, onDone, onError, tone = "neutral" }
 ) {
-  const token = localStorage.getItem("access");
   const ctrl  = new AbortController();
 
   (async () => {
     try {
+      const token = await ensureFreshAccessToken();
+      if (!token) throw new Error("Your session expired. Please sign in again.");
       const res = await fetch(`${BASE_URL}/chat/stream/`, {
         method: "POST",
         headers: {
@@ -110,7 +115,9 @@ export function sendMessageStream(
         return;
       }
 
+      if (!res.body) throw new Error("Streaming is unavailable in this browser.");
       const reader  = res.body.getReader();
+      let completed = false;
       const decoder = new TextDecoder();
       let buffer    = "";
 
@@ -130,12 +137,14 @@ export function sendMessageStream(
             const parsed = JSON.parse(raw);
             if (parsed.type === "meta")  onMeta?.(parsed);
             else if (parsed.type === "chunk") onChunk?.(parsed.text);
-            else if (parsed.type === "done")  onDone?.(parsed);
-          } catch {
-            // ignore malformed chunks
+            else if (parsed.type === "done") { completed = true; await onDone?.(parsed); }
+            else if (parsed.type === "error") throw new Error(parsed.message);
+          } catch (error) {
+            throw new Error(error.message || "Invalid response from server.");
           }
         }
       }
+      if (!completed) throw new Error("Connection interrupted before the response finished.");
     } catch (e) {
       if (e.name !== "AbortError") onError?.(e);
     }
