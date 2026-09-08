@@ -25,7 +25,7 @@ export default function PromptCard({ value, onChange, onSend, disabled, messages
   }, [value]);
 
   function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && !disabled) {
       e.preventDefault();
       onSend?.();
     }
@@ -50,7 +50,7 @@ export default function PromptCard({ value, onChange, onSend, disabled, messages
     setActionsOpen(false);
     if (!messages?.length) return;
 
-    const title = sessionTitle || "Aither Session";
+    const title = (sessionTitle || "Aither Session").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const date = new Date().toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" });
 
     const rows = messages.map((m) => {
@@ -78,6 +78,8 @@ export default function PromptCard({ value, onChange, onSend, disabled, messages
       </head><body><h1>${title}</h1><p>Exported from Aither · ${date}</p>${rows}</body></html>`;
 
     const win = window.open("", "_blank");
+    if (!win) { window.alert("Allow pop-ups to export this conversation."); return; }
+    win.opener = null;
     win.document.write(html);
     win.document.close();
     win.focus();
@@ -91,6 +93,7 @@ export default function PromptCard({ value, onChange, onSend, disabled, messages
     <div className="prompt-wrap">
       <div className="prompt-card">
         <textarea
+          aria-label="Message Aither"
           ref={textareaRef}
           className="prompt-textarea"
           placeholder="Ask Aither anything… (Shift+Enter for new line)"
@@ -108,6 +111,8 @@ export default function PromptCard({ value, onChange, onSend, disabled, messages
               <button
                 className="prompt-tool-btn"
                 type="button"
+                aria-label="Conversation actions"
+                aria-expanded={actionsOpen}
                 onClick={() => setActionsOpen(!actionsOpen)}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -181,7 +186,7 @@ export default function PromptCard({ value, onChange, onSend, disabled, messages
               </span>
             )}
 
-            <button className="prompt-mic" type="button" aria-label="Voice input">
+            <button className="prompt-mic" type="button" disabled title="Voice input is coming soon" aria-label="Voice input (coming soon)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <rect x="9" y="2" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8"/>
                 <path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>

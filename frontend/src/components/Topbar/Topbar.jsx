@@ -6,7 +6,7 @@ export default function Topbar({ sessionTitle, messages = [], onThemeToggle, isD
     if (!messages.length) return;
 
     // Build a clean printable HTML page
-    const title = sessionTitle || "Aither Session";
+    const title = (sessionTitle || "Aither Session").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const date = new Date().toLocaleDateString([], {
       year: "numeric", month: "long", day: "numeric"
     });
@@ -63,6 +63,8 @@ export default function Topbar({ sessionTitle, messages = [], onThemeToggle, isD
 </html>`;
 
     const win = window.open("", "_blank");
+    if (!win) { window.alert("Allow pop-ups to export this conversation."); return; }
+    win.opener = null;
     win.document.write(html);
     win.document.close();
     win.focus();
