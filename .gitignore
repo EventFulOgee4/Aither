@@ -29,3 +29,7 @@ node_modules/
 # Huggingface cache
 .cache/
 
+
+# Local verification dependencies and build output
+.test-deps/
+frontend/dist/
