@@ -3,7 +3,7 @@ import json
 from functools import lru_cache
 
 from django.utils import timezone
-from django.db.models import Avg, Min, Max
+from django.db.models import Avg, Min, Max, F
 from django.db.models.functions import Length
 from django.http import StreamingHttpResponse
 
@@ -14,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import PermissionDenied
 
 from .models import TherapySession, ChatMessage, MoodEntry, AIInteraction
-from .serializers import TherapySessionSerializer, ChatMessageSerializer, MoodEntrySerializer
+from .serializers import TherapySessionSerializer, ChatMessageSerializer, MoodEntrySerializer, StreamMessageSerializer
 
 
 @lru_cache(maxsize=1)
@@ -62,7 +62,6 @@ def generate_ai_response(user_text: str, history=None) -> tuple[str, str]:
     engine = get_engine()
     mode = engine.get("mode")
     print("ENGINE MODE:", mode)
-    print("USER TEXT:", user_text)
 
     if mode == "brain":
         brain = engine["brain"]
@@ -132,11 +131,11 @@ def stream_message(request):
     Final chunk:
       data: [DONE]\n\n
     """
-    session_id = request.data.get("session")
-    user_text = (request.data.get("message") or "").strip()
-
-    if not user_text:
-        return Response({"error": "message is required"}, status=400)
+    serializer = StreamMessageSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    session_id = serializer.validated_data.get("session")
+    user_text = serializer.validated_data["message"]
+    tone = serializer.validated_data["tone"]
 
     # Get or create session
     if session_id:
@@ -156,6 +155,8 @@ def stream_message(request):
         sender="user",
         message=user_text,
     )
+
+    TherapySession.objects.filter(pk=session.pk).update(last_activity=timezone.now(), message_count=F("message_count") + 1)
 
     # Get history
     history_qs = (
@@ -184,18 +185,26 @@ def stream_message(request):
         }
         yield f"data: {json.dumps(meta)}\n\n"
 
-        if brain and hasattr(brain, "respond_stream"):
-            for chunk in brain.respond_stream(user_text, history=history):
-                full_response.append(chunk)
-                yield f"data: {json.dumps({'type': 'chunk', 'text': chunk})}\n\n"
-        else:
-            # Fallback — send full response as single chunk
-            text, _ = generate_ai_response(user_text, history=history)
-            full_response.append(text)
-            yield f"data: {json.dumps({'type': 'chunk', 'text': text})}\n\n"
+        try:
+            if brain and hasattr(brain, "respond_stream"):
+                for chunk in brain.respond_stream(user_text, history=history, tone=tone):
+                    full_response.append(chunk)
+                    yield f"data: {json.dumps({'type': 'chunk', 'text': chunk})}\n\n"
+            else:
+                # Fallback — send full response as single chunk
+                text, _ = generate_ai_response(user_text, history=history)
+                full_response.append(text)
+                yield f"data: {json.dumps({'type': 'chunk', 'text': text})}\n\n"
+
+        except Exception:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Response interrupted. Please try again.'})}\n\n"
+            return
 
         # Save the complete AI response
         ai_text = "".join(full_response)
+        if not ai_text.strip():
+            yield f"data: {json.dumps({'type': 'error', 'message': 'The model returned an empty response. Please retry.'})}\n\n"
+            return
         ai_message = ChatMessage.objects.create(
             session=session,
             sender="ai",
@@ -205,7 +214,7 @@ def stream_message(request):
         session.last_activity = timezone.now()
         if session.message_count is None:
             session.message_count = 0
-        session.message_count += 2
+        session.message_count = F("message_count") + 1
         session.save(update_fields=["last_activity", "message_count", "title"])
 
         # Send final message with AI message ID
@@ -242,6 +251,7 @@ class TherapySessionViewSet(viewsets.ModelViewSet):
 
 
 class ChatMessageViewSet(viewsets.ModelViewSet):
+    http_method_names = ["get", "post", "head", "options"]
     serializer_class = ChatMessageSerializer
     permission_classes = [IsAuthenticated]
 
@@ -288,6 +298,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             ai_text = fallback_ai_response(self.user_message.message)
             model_name = "fallback"
 
+
         latency_ms = int((time.time() - start) * 1000)
 
         self.ai_message = ChatMessage.objects.create(
@@ -299,8 +310,10 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         session.last_activity = timezone.now()
         if session.message_count is None:
             session.message_count = 0
-        session.message_count += 2
+        session.message_count = F("message_count") + 2
         session.save(update_fields=["last_activity", "message_count", "title"])
+
+        session.refresh_from_db()
 
         AIInteraction.objects.create(
             session=session,
@@ -357,22 +370,22 @@ def session_metadata(request, session_id):
         return Response({"detail": "Session not found or not yours"}, status=404)
 
     messages = session.messages.all()
-    moods = session.moods.all()
-
+    message_stats = messages.aggregate(
+        average_length=Avg(Length("message")), last_timestamp=Max("timestamp")
+    )
+    mood_stats = session.moods.aggregate(average=Avg("intensity"), minimum=Min("intensity"), maximum=Max("intensity"))
+    last_timestamp = message_stats["last_timestamp"]
     return Response({
         "session_id": session.id,
         "title": session.title,
         "created_at": session.created_at,
         "user_messages": messages.filter(sender="user").count(),
         "ai_messages": messages.filter(sender="ai").count(),
-        "last_activity": messages.last().timestamp if messages.exists() else None,
-        "average_message_length": messages.aggregate(avg_len=Avg(Length("message")))["avg_len"] if messages.exists() else None,
-        "mood_count": moods.count(),
-        "average_mood": moods.aggregate(avg=Avg("intensity"))["avg"] if moods.exists() else None,
-        "min_mood_intensity": moods.aggregate(min=Min("intensity"))["min"] if moods.exists() else None,
-        "max_mood_intensity": moods.aggregate(max=Max("intensity"))["max"] if moods.exists() else None,
-        "session_duration_seconds": (
-            (messages.last().timestamp - session.created_at).total_seconds()
-            if messages.exists() else 0
-        ),
+        "last_activity": session.last_activity or last_timestamp,
+        "average_message_length": message_stats["average_length"],
+        "mood_count": session.moods.count(),
+        "average_mood": mood_stats["average"],
+        "min_mood_intensity": mood_stats["minimum"],
+        "max_mood_intensity": mood_stats["maximum"],
+        "session_duration_seconds": max(0, (last_timestamp - session.created_at).total_seconds()) if last_timestamp else 0,
     })
