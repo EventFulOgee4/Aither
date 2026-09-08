@@ -1,10 +1,10 @@
 print("✅ LOADED AitherBrain (Anthropic Claude) from backend/ml/brain.py")
 
-import anthropic
+import json
+from urllib import request
 from decouple import config
 
 from ml.emotion import AitherEmotionalTones
-from ml.rag import AitherRAG
 from ml.safety import AitherSafety, RiskAssessment
 from ml.memory import AitherMemory
 
@@ -50,18 +50,19 @@ class AitherBrain:
     MAX_TOKENS = 400
 
     def __init__(self):
-        api_key = config("ANTHROPIC_API_KEY", default=None)
-        if not api_key:
-            raise EnvironmentError(
-                "ANTHROPIC_API_KEY not set. Add it to your .env file:\n"
-                "ANTHROPIC_API_KEY=sk-ant-your-key-here"
-            )
-        self.client = anthropic.Anthropic(api_key=api_key)
-        print(f"✅ Anthropic client ready — model: {self.MODEL}")
+        self.provider = config("AITHER_MODEL_PROVIDER", default="anthropic").lower()
+        self.MODEL = config("AITHER_MODEL_NAME", default="gpt-4o-mini" if self.provider == "openai_compatible" else self.MODEL)
+        self.client = None
+        self.tokenizer = self.model = None
+        if self.provider == "anthropic":
+            import anthropic
+            self.client = anthropic.Anthropic(api_key=config("ANTHROPIC_API_KEY"), timeout=30.0)
+        elif self.provider not in ("openai_compatible", "local_hf"):
+            raise ValueError("Unsupported AITHER_MODEL_PROVIDER")
 
         self.memory  = AitherMemory(tokenizer=None, model=None)
         self.safety  = AitherSafety(self.memory)
-        self.rag     = AitherRAG()
+        self.rag     = None
         self.emotion = AitherEmotionalTones()
 
     def _build_system_prompt(self, tone: str = "neutral") -> str:
@@ -216,6 +217,9 @@ Help the user feel heard, understand themselves better, regulate emotions, and t
         if not use_rag:
             return ""
         try:
+            if self.rag is None:
+                from ml.rag import AitherRAG
+                self.rag = AitherRAG()
             results = self.rag.retrieve(user_message, topK=2)
             snippets = []
             for r in results:
@@ -229,6 +233,8 @@ Help the user feel heard, understand themselves better, regulate emotions, and t
             return ""
 
     def generate_session_title(self, user_message: str) -> str:
+        if self.client is None:
+            return " ".join(user_message.split()[:5])[:60] or "New Session"
         try:
             response = self.client.messages.create(
                 model=self.MODEL,
@@ -287,10 +293,40 @@ Help the user feel heard, understand themselves better, regulate emotions, and t
             system += f"\n\nRelevant background knowledge (use naturally, don't quote directly):\n{rag_context}"
         return system
 
+    def _generate_alternate(self, user_message, history=None, tone="neutral"):
+        messages = [{"role": "system", "content": self._get_system(user_message, tone)}]
+        messages.extend(self._build_messages(user_message, history))
+        if self.provider == "openai_compatible":
+            headers = {"Content-Type": "application/json"}
+            key = config("AITHER_MODEL_API_KEY", default="")
+            if key:
+                headers["Authorization"] = f"Bearer {key}"
+            payload = {"model": self.MODEL, "messages": messages, "max_tokens": self.MAX_TOKENS}
+            req = request.Request(config("AITHER_MODEL_API_URL"), data=json.dumps(payload).encode(), headers=headers)
+            with request.urlopen(req, timeout=config("AITHER_MODEL_TIMEOUT_S", default=30, cast=int)) as response:
+                result = json.load(response)["choices"][0]["message"]["content"].strip()
+            if not result:
+                raise RuntimeError("Model returned an empty response")
+            return result
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        if self.model is None:
+            name = config("AITHER_HF_MODEL", default="microsoft/DialoGPT-medium")
+            self.tokenizer = AutoTokenizer.from_pretrained(name)
+            self.model = AutoModelForCausalLM.from_pretrained(name).eval()
+        prompt = "\n".join(f"{m['role']}: {m['content']}" for m in messages) + "\nassistant:"
+        limit = max(1, getattr(self.model.config, "max_position_embeddings", 1024) - 140)
+        inputs = self.tokenizer.encode(prompt, return_tensors="pt")[:, -limit:]
+        with torch.no_grad():
+            output = self.model.generate(inputs, max_new_tokens=140, pad_token_id=self.tokenizer.eos_token_id)
+        return self.tokenizer.decode(output[0][inputs.shape[-1]:], skip_special_tokens=True).strip()
+
     def respond(self, user_message: str, history=None, tone: str = "neutral") -> str:
         if self._check_crisis(user_message):
             return self._crisis_response()
         self._analyze_emotion(user_message)
+        if self.provider != "anthropic":
+            return self._generate_alternate(user_message, history, tone)
         try:
             response = self.client.messages.create(
                 model=self.MODEL,
@@ -308,6 +344,9 @@ Help the user feel heard, understand themselves better, regulate emotions, and t
             yield self._crisis_response()
             return
         self._analyze_emotion(user_message)
+        if self.provider != "anthropic":
+            yield self._generate_alternate(user_message, history, tone)
+            return
         try:
             with self.client.messages.stream(
                 model=self.MODEL,
@@ -319,4 +358,4 @@ Help the user feel heard, understand themselves better, regulate emotions, and t
                     yield text
         except Exception as e:
             print("⚠️ Anthropic streaming failed:", repr(e))
-            yield "I'm here with you. Something went wrong — could you try again?"
+            raise RuntimeError("Model streaming failed") from e
