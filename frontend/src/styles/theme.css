@@ -145,3 +145,10 @@ img    { max-width: 100%; }
 ::-webkit-scrollbar-thumb { background: rgba(157, 135, 245, 0.2); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(157, 135, 245, 0.35); }
 ::selection { background: rgba(157, 135, 245, 0.3); color: #fff; }
+/* Keep keyboard navigation visible and respect motion preferences. */
+:focus-visible { outline: 2px solid #a995f5; outline-offset: 3px; }
+.chat-notice { display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px; margin-bottom: 8px; border: 1px solid #b47878; border-radius: 12px; background: var(--bg-secondary, #292032); color: var(--text-primary, #fff); }
+.chat-notice button { background: transparent; color: inherit; border: 0; cursor: pointer; font-size: 20px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

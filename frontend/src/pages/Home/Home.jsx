@@ -166,6 +166,11 @@ export default function Home() {
   const [activeModel, setActiveModel]         = useState("aither-mini");
   const [moodCheckInVisible, setMoodCheckInVisible] = useState(false);
 
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const requestRef = useRef(0);
+  const sendingRef = useRef(false);
+
   const aiResponseCountRef = useRef(0);
   const scrollRef           = useRef(null);
   const bottomRef           = useRef(null);
@@ -207,40 +212,58 @@ export default function Home() {
   }
 
   async function loadSession(sessionId) {
-    if (!sessionId) { setActiveSessionId(null); setMessages([]); return; }
+    if (sendingRef.current) return;
+    const request = ++requestRef.current;
     setActiveSessionId(sessionId);
+    setMessages([]);
+    setSidebarOpen(false);
     setMoodCheckInVisible(false);
+    setError("");
     aiResponseCountRef.current = 0;
-    const msgs = await getMessages(sessionId);
-    setMessages(msgs);
+    if (!sessionId) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const msgs = await getMessages(sessionId);
+      if (request === requestRef.current) setMessages(msgs);
+    } catch {
+      if (request === requestRef.current) setError("Could not load this conversation. Select it again to retry.");
+    } finally {
+      if (request === requestRef.current) setLoading(false);
+    }
   }
 
-  // ── Init ────────────────────────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         await ensureFreshAccessToken();
-        const list = await refreshSessions(true);
-        if (list.length && list[0]?.id) {
-          const firstId = list[0].id;
-          setActiveSessionId(firstId);
-          const msgs = await getMessages(firstId);
-          setMessages(msgs);
+        const list = await listSessions();
+        if (cancelled) return;
+        setSessions(list);
+        if (list.length) {
+          setActiveSessionId(list[0].id);
+          const msgs = await getMessages(list[0].id);
+          if (!cancelled) setMessages(msgs);
         }
-      } catch (e) { console.error(e); }
+      } catch {
+        if (!cancelled) setError("Could not load your chats. Check your connection or sign in again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
+    return () => { cancelled = true; cancelStreamRef.current?.(); };
   }, []);
 
   useEffect(() => {
     scrollToBottom(messages.length <= 2 ? "instant" : "smooth");
-  }, [messages, sending]);
+  }, [messages, sending, scrollToBottom]);
 
   async function handleLogMood(mood, intensity) {
-    try { await logMood(mood, intensity, ""); }
-    catch (e) { console.error("Mood log failed:", e); }
+    await logMood(mood, intensity, activeSessionId);
   }
 
   async function handleNewChat() {
+    if (sendingRef.current || loading) return;
     try {
       const s = await createSession("New Session");
       await refreshSessions(false);
@@ -252,7 +275,7 @@ export default function Home() {
   }
 
   async function handleDeleteChat() {
-    if (!activeSessionId) return;
+    if (!activeSessionId || sendingRef.current || loading) return;
     if (!window.confirm("Delete this chat?")) return;
     try {
       const deletingId = activeSessionId;
@@ -267,7 +290,9 @@ export default function Home() {
 
   async function handleSend(prefilledText) {
     const text = (prefilledText ?? input).trim();
-    if (!text || sending) return;
+    if (!text || sendingRef.current || loading) return;
+    sendingRef.current = true;
+    setError("");
 
     cancelStreamRef.current?.();
     setMoodCheckInVisible(false);
@@ -290,8 +315,10 @@ export default function Home() {
       } catch (e) {
         console.error(e);
         setMessages((prev) => prev.filter((m) => m.id !== tempUserId));
+        sendingRef.current = false;
         setSending(false);
-        alert("Could not create session.");
+        setInput(text);
+        setError("Could not create a conversation. Your message is ready to retry.");
         return;
       }
     }
@@ -318,19 +345,24 @@ export default function Home() {
             ? { ...m, id: done.ai_message_id ?? m.id, streaming: false, timestamp: aiTimestamp }
             : m
         ));
+        sendingRef.current = false;
         setSending(false);
         cancelStreamRef.current = null;
         aiResponseCountRef.current += 1;
         if (aiResponseCountRef.current % 3 === 0) setMoodCheckInVisible(true);
-        await refreshSessions(false);
+        try { await refreshSessions(false); }
+        catch { setError("Reply saved, but the chat list could not refresh."); }
       },
       tone: activeTone,
 
       onError: (err) => {
         console.error("Stream error:", err);
-        setMessages((prev) => prev.filter((m) => m.id !== streamingId && m.id !== tempUserId));
+        setMessages((prev) => prev.map((m) => m.id === streamingId ? { ...m, streaming: false } : m).filter((m) => m.id !== streamingId || m.content));
+        sendingRef.current = false;
         setSending(false);
-        alert("Send failed. Check your login token and backend.");
+        cancelStreamRef.current = null;
+        setInput(text);
+        setError(err.message || "Could not finish the response. Your draft has been restored.");
       },
     });
   }
@@ -395,7 +427,7 @@ export default function Home() {
             )}
 
             {hasMessages && (
-              <div className="messages-wrap">
+              <div className="messages-wrap" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions">
                 {messages.map((m) => (
                   <div
                     key={m.id}
@@ -466,12 +498,14 @@ export default function Home() {
         </div>
 
         <div className="prompt-area">
+          {error && <div className="chat-notice" role="alert">{error}<button type="button" onClick={() => setError("")} aria-label="Dismiss error">×</button></div>}
+          {loading && <p role="status">Loading conversation…</p>}
           <ContextMeter messageCount={messages.length} />
           <PromptCard
             value={input}
             onChange={setInput}
             onSend={() => handleSend()}
-            disabled={sending}
+            disabled={sending || loading}
             messages={messages}
             sessionTitle={activeSession?.title}
             model={activeModel}

@@ -45,7 +45,7 @@ export default function LoginPage() {
         await register(username.trim(), email.trim(), password);
       }
       nav("/");
-    } catch (e) {
+    } catch {
       if (mode === "login") {
         setErr("Login failed. Check your username and password.");
       } else {
