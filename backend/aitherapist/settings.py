@@ -100,30 +100,35 @@ WSGI_APPLICATION = 'aitherapist.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 # Secret key
 SECRET_KEY = config('SECRET_KEY')
 
 # Debug
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-# Database (CHange to PostgreSQL in production)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='127.0.0.1'),
-        'PORT': config('DB_PORT', default='5432'),
+# SQLite works without a separate database server or PostgreSQL credentials.
+DB_ENGINE = config('DB_ENGINE', default='sqlite').strip().lower()
+if DB_ENGINE == 'sqlite':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+elif DB_ENGINE == 'postgresql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST', default='127.0.0.1'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
+else:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('DB_ENGINE must be sqlite or postgresql.')
 
 
 # Password validation
