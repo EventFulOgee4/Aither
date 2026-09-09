@@ -2,6 +2,26 @@
 
 Aither routes chat generation through `backend/ml/brain.py`.
 
+## Database and startup
+
+SQLite is the default. It stores data in `backend/db.sqlite3` and does not
+require a PostgreSQL server or `DB_NAME`, `DB_USER`, and `DB_PASSWORD`.
+Keep your existing `SECRET_KEY` in `backend/.env`. To explicitly select SQLite,
+set `DB_ENGINE=sqlite` in that file.
+
+After pulling these changes, run from the `backend` directory:
+
+```bash
+python manage.py migrate
+python manage.py runserver
+```
+
+A new SQLite database starts with no accounts or chat history. Existing
+PostgreSQL data is not transferred automatically. Do not commit `db.sqlite3`.
+
+To use PostgreSQL later, set `DB_ENGINE=postgresql` and configure `DB_NAME`,
+`DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` for a running server.
+
 ## Supported providers
 
 ### Anthropic (default)
